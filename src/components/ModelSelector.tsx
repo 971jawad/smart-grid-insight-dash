@@ -56,7 +56,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelCha
           <SelectValue placeholder="Select model for predictions" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">No Predictions (Show Data Only)</SelectItem>
+          <SelectItem value="none">No Predictions (Show Data Only)</SelectItem>
           <SelectItem value="GRU">GRU</SelectItem>
           <SelectItem value="Bidirectional LSTM">Bidirectional LSTM</SelectItem>
           <SelectItem value="NBEATS">NBEATS</SelectItem>

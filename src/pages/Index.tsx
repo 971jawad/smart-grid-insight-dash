@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,11 +17,11 @@ import { toast } from "sonner";
 
 const Index = () => {
   // State for selected model and data
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('none');
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
   
-  // Get model performance metrics only when a model is selected
-  const modelMetrics = selectedModel ? getModelPerformance(selectedModel) : { mae: 0, mse: 0, r2: 0 };
+  // Get model performance metrics only when a model is selected and it's not 'none'
+  const modelMetrics = selectedModel && selectedModel !== 'none' ? getModelPerformance(selectedModel) : { mae: 0, mse: 0, r2: 0 };
   
   // Ref for PDF export
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ const Index = () => {
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
     
-    if (model && consumptionData.length > 0) {
+    if (model && model !== 'none' && consumptionData.length > 0) {
       // Get only historical data (remove any existing predictions)
       const historicalData = consumptionData.filter(item => !item.isPrediction);
       
@@ -42,15 +43,15 @@ const Index = () => {
       
       setConsumptionData([...historicalData, ...newPredictions]);
       toast.success(`Generated predictions using ${model} model`);
-    } else if (!model) {
-      // If no model is selected, show only historical data
+    } else {
+      // If no model is selected or 'none' is selected, show only historical data
       setConsumptionData(prev => prev.filter(item => !item.isPrediction));
     }
   };
   
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    setSelectedModel(''); // Reset model selection
+    setSelectedModel('none'); // Reset model selection to 'none'
     setConsumptionData(data); // Set only historical data
     toast.success('Data uploaded successfully');
   };
@@ -103,8 +104,8 @@ const Index = () => {
             <ConsumptionChart data={consumptionData} />
           </div>
           
-          {/* Metrics Cards - Only show when model is selected */}
-          {selectedModel && (
+          {/* Metrics Cards - Only show when model is selected and not 'none' */}
+          {selectedModel && selectedModel !== 'none' && (
             <div className="mb-6">
               <MetricsCards 
                 mae={modelMetrics.mae} 
