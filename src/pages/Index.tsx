@@ -1,14 +1,12 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   ConsumptionData, 
-  generateMockData, 
-  getModelPerformance,
-  generatePredictions
+  generatePredictions,
+  getModelPerformance
 } from '@/utils/mockData';
 import { generatePdfReport } from '@/utils/pdfExport';
-import ModelSelector, { MODEL_CHARACTERISTICS } from '@/components/ModelSelector';
+import ModelSelector from '@/components/ModelSelector';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import MetricsCards from '@/components/MetricsCards';
 import FileUploader from '@/components/FileUploader';
@@ -18,11 +16,11 @@ import { toast } from "sonner";
 
 const Index = () => {
   // State for selected model and data
-  const [selectedModel, setSelectedModel] = useState<string>('GRU');
-  const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>(generateMockData());
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
   
-  // Get model performance metrics
-  const modelMetrics = getModelPerformance(selectedModel);
+  // Get model performance metrics only when a model is selected
+  const modelMetrics = selectedModel ? getModelPerformance(selectedModel) : { mae: 0, mse: 0, r2: 0 };
   
   // Ref for PDF export
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -31,12 +29,11 @@ const Index = () => {
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
     
-    // Regenerate predictions when model changes
-    const historicalData = consumptionData.filter(item => !item.isPrediction);
-    if (historicalData.length > 0) {
-      const allData = [...historicalData];
+    if (model && consumptionData.length > 0) {
+      // Get only historical data (remove any existing predictions)
+      const historicalData = consumptionData.filter(item => !item.isPrediction);
       
-      // Remove previous predictions
+      // Generate new predictions
       const newPredictions = generatePredictions(
         historicalData, 
         72, // 6 years of monthly predictions
@@ -44,16 +41,18 @@ const Index = () => {
       );
       
       setConsumptionData([...historicalData, ...newPredictions]);
-      toast.success(`Predictions updated using ${model} model`);
+      toast.success(`Generated predictions using ${model} model`);
+    } else if (!model) {
+      // If no model is selected, show only historical data
+      setConsumptionData(prev => prev.filter(item => !item.isPrediction));
     }
   };
   
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    // Generate predictions for the next 6 years (72 months)
-    const predictions = generatePredictions(data, 72, selectedModel);
-    setConsumptionData([...data, ...predictions]);
-    toast.success(`Generated predictions for next 6 years using ${selectedModel} model`);
+    setSelectedModel(''); // Reset model selection
+    setConsumptionData(data); // Set only historical data
+    toast.success('Data uploaded successfully');
   };
   
   // Handle PDF generation
@@ -104,14 +103,16 @@ const Index = () => {
             <ConsumptionChart data={consumptionData} />
           </div>
           
-          {/* Metrics Cards */}
-          <div className="mb-6">
-            <MetricsCards 
-              mae={modelMetrics.mae} 
-              mse={modelMetrics.mse} 
-              r2={modelMetrics.r2} 
-            />
-          </div>
+          {/* Metrics Cards - Only show when model is selected */}
+          {selectedModel && (
+            <div className="mb-6">
+              <MetricsCards 
+                mae={modelMetrics.mae} 
+                mse={modelMetrics.mse} 
+                r2={modelMetrics.r2} 
+              />
+            </div>
+          )}
           
           {/* Summary Table */}
           <div className="mb-6">

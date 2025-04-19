@@ -32,7 +32,7 @@ interface ModelSelectorProps {
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelChange }) => {
-  const modelInfo = MODEL_CHARACTERISTICS[selectedModel as keyof typeof MODEL_CHARACTERISTICS];
+  const modelInfo = selectedModel ? MODEL_CHARACTERISTICS[selectedModel as keyof typeof MODEL_CHARACTERISTICS] : null;
 
   return (
     <div className="w-full max-w-xs">
@@ -46,16 +46,17 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelCha
               <span><HelpCircle size={16} className="text-gray-400" /></span>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p>{modelInfo?.description || 'Choose a model for forecasting'}</p>
+              <p>{modelInfo?.description || 'Choose a model to generate predictions'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
       <Select value={selectedModel} onValueChange={onModelChange}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select model" />
+          <SelectValue placeholder="Select model for predictions" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="">No Predictions (Show Data Only)</SelectItem>
           <SelectItem value="GRU">GRU</SelectItem>
           <SelectItem value="Bidirectional LSTM">Bidirectional LSTM</SelectItem>
           <SelectItem value="NBEATS">NBEATS</SelectItem>
