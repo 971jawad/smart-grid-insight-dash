@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ConsumptionData } from '@/utils/mockData';
+import { toast } from "sonner";
 
 interface FileUploaderProps {
   onDataUploaded: (data: ConsumptionData[]) => void;
@@ -9,6 +10,88 @@ interface FileUploaderProps {
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check for missing months and interpolate data
+  const interpolateMissingMonths = (data: ConsumptionData[]): ConsumptionData[] => {
+    if (data.length <= 1) return data;
+    
+    // Sort data by date
+    const sortedData = [...data].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    const result: ConsumptionData[] = [];
+    const startDate = new Date(sortedData[0].date);
+    const endDate = new Date(sortedData[sortedData.length - 1].date);
+    
+    // Create a map of existing dates for fast lookup
+    const existingDates = new Map<string, ConsumptionData>();
+    sortedData.forEach(item => {
+      existingDates.set(item.date, item);
+    });
+    
+    // Generate all months between start and end dates
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const formattedDate = `${year}-${month}-01`;
+      
+      if (existingDates.has(formattedDate)) {
+        result.push(existingDates.get(formattedDate)!);
+      } else {
+        // Interpolate missing month
+        const prevDate = new Date(currentDate);
+        prevDate.setMonth(prevDate.getMonth() - 1);
+        const nextDate = new Date(currentDate);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        
+        const prevYear = prevDate.getFullYear();
+        const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
+        const prevFormattedDate = `${prevYear}-${prevMonth}-01`;
+        
+        const nextYear = nextDate.getFullYear();
+        const nextMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const nextFormattedDate = `${nextYear}-${nextMonth}-01`;
+        
+        let interpolatedValue = 0;
+        let valuesFound = 0;
+        
+        // Find the closest previous value
+        for (let i = sortedData.length - 1; i >= 0; i--) {
+          if (new Date(sortedData[i].date) < currentDate) {
+            interpolatedValue += sortedData[i].consumption;
+            valuesFound++;
+            break;
+          }
+        }
+        
+        // Find the closest next value
+        for (let i = 0; i < sortedData.length; i++) {
+          if (new Date(sortedData[i].date) > currentDate) {
+            interpolatedValue += sortedData[i].consumption;
+            valuesFound++;
+            break;
+          }
+        }
+        
+        // Calculate average or use the only value found
+        interpolatedValue = valuesFound > 0 ? interpolatedValue / valuesFound : 0;
+        
+        result.push({
+          date: formattedDate,
+          consumption: Math.round(interpolatedValue),
+          isPrediction: false,
+          isInterpolated: true
+        });
+      }
+      
+      // Move to next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    return result;
+  };
 
   const processCSV = (csvText: string): ConsumptionData[] => {
     try {
@@ -37,6 +120,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
         
         const values = lines[i].split(',');
         
+        // Skip if not enough values
+        if (values.length <= Math.max(dateIndex, consumptionIndex)) continue;
+        
         // Try to parse the date
         let dateStr = values[dateIndex].trim();
         let dateObj: Date;
@@ -62,7 +148,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
-        const formattedDate = `${year}-${month}-${day}`;
+        const formattedDate = `${year}-${month}-01`;
         
         result.push({
           date: formattedDate,
@@ -82,6 +168,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    // Check if it's a CSV file
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setError('Only CSV files are accepted');
+      toast.error('Only CSV files are accepted');
+      return;
+    }
+    
     setIsUploading(true);
     setError(null);
     
@@ -90,17 +183,25 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const parsedData = processCSV(text);
+        let parsedData = processCSV(text);
         
         if (parsedData.length === 0) {
           setError('No valid data found in the file');
+          toast.error('No valid data found in the file');
         } else {
+          // Interpolate missing months
+          parsedData = interpolateMissingMonths(parsedData);
+          
           // Sort data by date
           parsedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          
+          toast.success(`Successfully processed data with ${parsedData.length} entries`);
           onDataUploaded(parsedData);
         }
       } catch (error) {
-        setError(`Error processing file: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setError(`Error processing file: ${errorMessage}`);
+        toast.error(`Error processing file: ${errorMessage}`);
       } finally {
         setIsUploading(false);
       }
@@ -108,6 +209,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataUploaded }) => {
     
     reader.onerror = () => {
       setError('Error reading file');
+      toast.error('Error reading file');
       setIsUploading(false);
     };
     

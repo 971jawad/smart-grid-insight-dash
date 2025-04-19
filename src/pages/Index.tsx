@@ -4,15 +4,17 @@ import { Button } from '@/components/ui/button';
 import { 
   ConsumptionData, 
   generateMockData, 
-  getModelPerformance
+  getModelPerformance,
+  generatePredictions
 } from '@/utils/mockData';
 import { generatePdfReport } from '@/utils/pdfExport';
-import ModelSelector from '@/components/ModelSelector';
+import ModelSelector, { MODEL_CHARACTERISTICS } from '@/components/ModelSelector';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import MetricsCards from '@/components/MetricsCards';
 import FileUploader from '@/components/FileUploader';
 import SummaryTable from '@/components/SummaryTable';
 import { Printer } from 'lucide-react';
+import { toast } from "sonner";
 
 const Index = () => {
   // State for selected model and data
@@ -25,9 +27,33 @@ const Index = () => {
   // Ref for PDF export
   const dashboardRef = useRef<HTMLDivElement>(null);
   
+  // Handle model change
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    
+    // Regenerate predictions when model changes
+    const historicalData = consumptionData.filter(item => !item.isPrediction);
+    if (historicalData.length > 0) {
+      const allData = [...historicalData];
+      
+      // Remove previous predictions
+      const newPredictions = generatePredictions(
+        historicalData, 
+        72, // 6 years of monthly predictions
+        model
+      );
+      
+      setConsumptionData([...historicalData, ...newPredictions]);
+      toast.success(`Predictions updated using ${model} model`);
+    }
+  };
+  
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    setConsumptionData(data);
+    // Generate predictions for the next 6 years (72 months)
+    const predictions = generatePredictions(data, 72, selectedModel);
+    setConsumptionData([...data, ...predictions]);
+    toast.success(`Generated predictions for next 6 years using ${selectedModel} model`);
   };
   
   // Handle PDF generation
@@ -42,6 +68,7 @@ const Index = () => {
         r2: modelMetrics.r2
       }
     );
+    toast.success("PDF report generated successfully");
   };
   
   return (
@@ -58,7 +85,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <ModelSelector 
               selectedModel={selectedModel} 
-              onModelChange={setSelectedModel} 
+              onModelChange={handleModelChange} 
             />
             
             <div className="flex justify-end items-end">
