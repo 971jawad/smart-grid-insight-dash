@@ -1,6 +1,6 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   ConsumptionData, 
   generatePredictions,
@@ -72,10 +72,11 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Smart Grid Electricity Consumption Dashboard</h1>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="bg-card shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Smart Grid Electricity Consumption Dashboard</h1>
+          <ThemeToggle />
         </div>
       </header>
       
@@ -127,9 +128,9 @@ const Index = () => {
         </div>
       </main>
       
-      <footer className="bg-white border-t border-gray-200 mt-12">
+      <footer className="bg-card border-t border-border mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-sm text-muted-foreground text-center">
             Smart Grid Electricity Consumption Dashboard © {new Date().getFullYear()}
           </p>
         </div>
