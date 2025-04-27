@@ -23,5 +23,6 @@ export function ThemeProvider({
   children, 
   ...props 
 }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+  // Cast the props to any to avoid type issues with NextThemesProvider
+  return <NextThemesProvider {...props as any}>{children}</NextThemesProvider>
 }
