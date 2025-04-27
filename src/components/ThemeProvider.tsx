@@ -9,7 +9,7 @@ interface ThemeProviderProps {
   children: React.ReactNode
   defaultTheme?: string
   storageKey?: string
-  attribute?: string
+  attribute?: string | string[] // Updated to accept string or string array
   enableSystem?: boolean
   enableColorScheme?: boolean
   forcedTheme?: string
