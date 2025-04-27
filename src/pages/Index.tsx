@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -12,8 +13,9 @@ import ConsumptionChart from '@/components/ConsumptionChart';
 import MetricsCards from '@/components/MetricsCards';
 import FileUploader from '@/components/FileUploader';
 import SummaryTable from '@/components/SummaryTable';
-import { Printer } from 'lucide-react';
+import { Printer, LogIn, UserPlus } from 'lucide-react';
 import { toast } from "sonner";
+import { Link } from 'react-router-dom';
 
 const Index = () => {
   // State for selected model and data
@@ -76,7 +78,21 @@ const Index = () => {
       <header className="bg-card shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Smart Grid Electricity Consumption Dashboard</h1>
-          <ThemeToggle />
+          <div className="flex items-center space-x-4">
+            <Link to="/sign-in">
+              <Button variant="outline" className="flex items-center gap-2">
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Register
+              </Button>
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       
