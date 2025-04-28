@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,32 +7,54 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from "sonner";
+import { useAuth } from '@/lib/authProvider';
+import { supabase } from '@/integrations/supabase/client';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signIn, user } = useAuth();
+
+  useEffect(() => {
+    // If user is already logged in, redirect to home page
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Mock sign in for now - this will be replaced with actual auth
-      setTimeout(() => {
-        toast.success('Sign in successful!');
-        navigate('/');
-      }, 1000);
-    } catch (error) {
-      toast.error('Failed to sign in.');
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast.error(error.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sign in.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    toast.info('Google authentication will be implemented with Supabase integration.');
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sign in with Google.');
+    }
   };
 
   return (

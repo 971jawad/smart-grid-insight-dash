@@ -11,11 +11,28 @@ import { generatePdfReport } from '@/utils/pdfExport';
 import ModelSelector from '@/components/ModelSelector';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import MetricsCards from '@/components/MetricsCards';
-import FileUploader from '@/components/FileUploader';
+import EnhancedFileUploader from '@/components/EnhancedFileUploader';
 import SummaryTable from '@/components/SummaryTable';
-import { Printer, LogIn, UserPlus } from 'lucide-react';
+import { Printer, LogOut, User } from 'lucide-react';
 import { toast } from "sonner";
-import { Link } from 'react-router-dom';
+import { useAuth } from '@/lib/authProvider';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger 
+} from "@/components/ui/sheet";
 
 const Index = () => {
   // State for selected model and data
@@ -27,6 +44,9 @@ const Index = () => {
   
   // Ref for PDF export
   const dashboardRef = useRef<HTMLDivElement>(null);
+  
+  // Get auth context
+  const { user, signOut } = useAuth();
   
   // Handle model change
   const handleModelChange = (model: string) => {
@@ -73,31 +93,60 @@ const Index = () => {
     toast.success("PDF report generated successfully");
   };
   
+  // Handle sign out
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+  };
+  
+  // Generate initials for avatar fallback
+  const getInitials = (name?: string): string => {
+    if (!name) return "U";
+    return name.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  // Get user's name from metadata if available
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-card shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Smart Grid Electricity Consumption Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <Link to="/sign-in">
-              <Button variant="outline" className="flex items-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Register
-              </Button>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative rounded-full h-10 w-10 p-0">
+                  <Avatar>
+                    <AvatarImage src={user?.user_metadata?.avatar_url} />
+                    <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>{userName}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ThemeToggle />
           </div>
         </div>
       </header>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div ref={dashboardRef}>
+        <div ref={dashboardRef} className="mb-6">
           {/* Top Controls */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <ModelSelector 
@@ -140,7 +189,22 @@ const Index = () => {
         
         {/* File Upload Section */}
         <div className="mt-8">
-          <FileUploader onDataUploaded={handleDataUpload} />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full">Upload Data</Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[540px]">
+              <SheetHeader>
+                <SheetTitle>Upload Data</SheetTitle>
+                <SheetDescription>
+                  Upload your CSV data files to analyze and visualize your energy consumption
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-6">
+                <EnhancedFileUploader onDataUploaded={handleDataUpload} />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </main>
       

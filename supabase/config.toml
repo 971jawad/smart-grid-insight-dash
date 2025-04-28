@@ -1,1 +1,5 @@
+
 project_id = "dqtofiqbqhwklhkltfkh"
+
+[functions.scan-file]
+verify_jwt = true
