@@ -10,6 +10,7 @@ import FileUploadZone from '@/components/FileUploadZone';
 import FileStatusIndicator from '@/components/FileStatusIndicator';
 import { processCSV, interpolateMissingMonths } from '@/utils/fileProcessing';
 import { uploadToSupabase, scanFile } from '@/utils/supabaseStorage';
+import AuthDialog from '@/components/AuthDialog';
 
 interface EnhancedFileUploaderProps {
   onDataUploaded: (data: ConsumptionData[]) => void;
@@ -22,9 +23,15 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
   const [scanStatus, setScanStatus] = useState<ScanStatus>('pending');
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const { user } = useAuth();
 
   const handleFileSelect = (file: File) => {
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+    
     setSelectedFile(file);
     setError(null);
     setScanStatus('pending');
@@ -128,44 +135,38 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       
       <CardContent>
         <div className="space-y-4">
-          {!user ? (
-            <div className="text-center py-4">
-              <p>Please sign in to upload files</p>
+          <FileUploadZone 
+            onFileUpload={handleFileUpload}
+            isUploading={isUploading}
+          />
+          
+          <GoogleDriveUploader onFileSelected={handleGoogleDriveFile} />
+          
+          {selectedFile && !isUploading && (
+            <FileStatusIndicator
+              selectedFile={selectedFile}
+              isUploading={isUploading}
+              scanStatus={scanStatus}
+              onProcess={processSelectedFile}
+            />
+          )}
+          
+          {isUploading && (
+            <div className="mt-3 flex items-center space-x-2 text-blue-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Processing file...</span>
             </div>
-          ) : (
-            <>
-              <FileUploadZone 
-                onFileUpload={handleFileUpload}
-                isUploading={isUploading}
-              />
-              
-              <GoogleDriveUploader onFileSelected={handleGoogleDriveFile} />
-              
-              {selectedFile && !isUploading && (
-                <FileStatusIndicator
-                  selectedFile={selectedFile}
-                  isUploading={isUploading}
-                  scanStatus={scanStatus}
-                  onProcess={processSelectedFile}
-                />
-              )}
-              
-              {isUploading && (
-                <div className="mt-3 flex items-center space-x-2 text-blue-600">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Processing file...</span>
-                </div>
-              )}
-              
-              {error && (
-                <div className="mt-3 text-sm text-red-600">
-                  {error}
-                </div>
-              )}
-            </>
+          )}
+          
+          {error && (
+            <div className="mt-3 text-sm text-red-600">
+              {error}
+            </div>
           )}
         </div>
       </CardContent>
+      
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
     </Card>
   );
 };

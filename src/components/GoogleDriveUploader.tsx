@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/authProvider';
+import AuthDialog from './AuthDialog';
 
 // Google Drive API key and Client ID
 const API_KEY = 'AIzaSyBt7FcBjdZDHQs_Ty_vaAIjjXYrY5iWpMs'; // This is a public API key
@@ -17,6 +17,7 @@ interface GoogleDriveUploaderProps {
 
 const GoogleDriveUploader: React.FC<GoogleDriveUploaderProps> = ({ onFileSelected }) => {
   const [loading, setLoading] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const { user } = useAuth();
 
   const loadGoogleDriveAPI = () => {
@@ -60,7 +61,7 @@ const GoogleDriveUploader: React.FC<GoogleDriveUploaderProps> = ({ onFileSelecte
 
   const handleGoogleDriveSelect = async () => {
     if (!user) {
-      toast.error('Please sign in to use Google Drive');
+      setShowAuthDialog(true);
       return;
     }
 
@@ -176,31 +177,34 @@ const GoogleDriveUploader: React.FC<GoogleDriveUploaderProps> = ({ onFileSelecte
   };
 
   return (
-    <Button 
-      variant="outline" 
-      onClick={handleGoogleDriveSelect} 
-      disabled={loading}
-      className="w-full mt-2"
-    >
-      {loading ? (
-        <>
-          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></span>
-          Connecting to Google Drive...
-        </>
-      ) : (
-        <>
-          <svg viewBox="0 0 87.3 78" className="h-4 w-4 mr-2 fill-current">
-            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3 1.4.8 2.9 1.2 4.5 1.2h47.4c1.6 0 3.1-.4 4.5-1.2 1.35-.8 2.5-1.9 3.3-3.3l3.85-6.65-70.7 0z" fill="#0066da"/>
-            <path d="m45.95 12.8-18.6 32.2-20.75 35.85 70.7 0-20.75-35.85z" fill="#00ac47"/>
-            <path d="m45.95 12.8 18.6 32.2 20.75 35.85-39.35-68.05z" fill="#ea4335"/>
-            <path d="m45.95 12.8-39.35 68.05 20.75-35.85z" fill="#00832d"/>
-            <path d="m6.6 66.85 39.35-68.05-18.6 32.2-20.75 35.85z" fill="#2684fc"/>
-            <path d="m64.55 45 20.75 35.85-39.35-68.05z" fill="#ffba00"/>
-          </svg>
-          Select from Google Drive
-        </>
-      )}
-    </Button>
+    <>
+      <Button 
+        variant="outline" 
+        onClick={handleGoogleDriveSelect} 
+        disabled={loading}
+        className="w-full mt-2"
+      >
+        {loading ? (
+          <>
+            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></span>
+            Connecting to Google Drive...
+          </>
+        ) : (
+          <>
+            <svg viewBox="0 0 87.3 78" className="h-4 w-4 mr-2 fill-current">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3 1.4.8 2.9 1.2 4.5 1.2h47.4c1.6 0 3.1-.4 4.5-1.2 1.35-.8 2.5-1.9 3.3-3.3l3.85-6.65-70.7 0z" fill="#0066da"/>
+              <path d="m45.95 12.8-18.6 32.2-20.75 35.85 70.7 0-20.75-35.85z" fill="#00ac47"/>
+              <path d="m45.95 12.8 18.6 32.2 20.75 35.85-39.35-68.05z" fill="#ea4335"/>
+              <path d="m45.95 12.8-39.35 68.05 20.75-35.85z" fill="#00832d"/>
+              <path d="m6.6 66.85 39.35-68.05-18.6 32.2-20.75 35.85z" fill="#2684fc"/>
+              <path d="m64.55 45 20.75 35.85-39.35-68.05z" fill="#ffba00"/>
+            </svg>
+            Select from Google Drive
+          </>
+        )}
+      </Button>
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
+    </>
   );
 };
 
