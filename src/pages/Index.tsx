@@ -1,11 +1,12 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   ConsumptionData, 
   generatePredictions,
-  getModelPerformance
+  getModelPerformance,
+  generateMockData
 } from '@/utils/mockData';
 import { generatePdfReport } from '@/utils/pdfExport';
 import ModelSelector from '@/components/ModelSelector';
@@ -13,7 +14,7 @@ import ConsumptionChart from '@/components/ConsumptionChart';
 import MetricsCards from '@/components/MetricsCards';
 import EnhancedFileUploader from '@/components/EnhancedFileUploader';
 import SummaryTable from '@/components/SummaryTable';
-import { Printer, LogOut, User } from 'lucide-react';
+import { Printer, LogOut, User, Upload } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/lib/authProvider';
 import { 
@@ -33,20 +34,52 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Link, useNavigate } from 'react-router-dom';
 
-const Index = () => {
+interface IndexProps {
+  loggedIn?: boolean;
+}
+
+const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   // State for selected model and data
-  const [selectedModel, setSelectedModel] = useState<string>('none');
+  const [selectedModel, setSelectedModel] = useState<string>('GRU');
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
+  const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false);
   
-  // Get model performance metrics only when a model is selected and it's not 'none'
-  const modelMetrics = selectedModel && selectedModel !== 'none' ? getModelPerformance(selectedModel) : { mae: 0, mse: 0, r2: 0 };
+  // Get model performance metrics
+  const modelMetrics = selectedModel && selectedModel !== 'none' 
+    ? getModelPerformance(selectedModel) 
+    : { mae: 0, mse: 0, r2: 0 };
   
   // Ref for PDF export
   const dashboardRef = useRef<HTMLDivElement>(null);
   
-  // Get auth context
+  // Get auth context and navigation
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  
+  // Load default data on component mount
+  useEffect(() => {
+    // Generate default data
+    const defaultData = generateMockData();
+    setConsumptionData(defaultData);
+    
+    // Set a default model
+    if (selectedModel && selectedModel !== 'none') {
+      const historicalData = defaultData.filter(item => !item.isPrediction);
+      const newPredictions = generatePredictions(historicalData, 72, selectedModel);
+      setConsumptionData([...historicalData, ...newPredictions]);
+    }
+  }, []);
   
   // Handle model change
   const handleModelChange = (model: string) => {
@@ -73,9 +106,23 @@ const Index = () => {
   
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    setSelectedModel('none'); // Reset model selection to 'none'
-    setConsumptionData(data); // Set only historical data
+    setSelectedModel('GRU'); // Set default model
+    setConsumptionData(data); // Set historical data
+    
+    // Generate predictions with default model
+    const historicalData = data.filter(item => !item.isPrediction);
+    const newPredictions = generatePredictions(historicalData, 72, 'GRU');
+    setConsumptionData([...historicalData, ...newPredictions]);
+    
     toast.success('Data uploaded successfully');
+  };
+  
+  // Handle upload click - show auth dialog if not logged in
+  const handleUploadClick = () => {
+    if (!user && !loggedIn) {
+      setShowAuthDialog(true);
+      return;
+    }
   };
   
   // Handle PDF generation
@@ -99,6 +146,16 @@ const Index = () => {
     toast.success('Signed out successfully');
   };
   
+  // Navigate to sign in page
+  const handleSignInClick = () => {
+    navigate('/sign-in');
+  };
+  
+  // Navigate to register page
+  const handleRegisterClick = () => {
+    navigate('/register');
+  };
+  
   // Generate initials for avatar fallback
   const getInitials = (name?: string): string => {
     if (!name) return "U";
@@ -110,7 +167,7 @@ const Index = () => {
   };
 
   // Get user's name from metadata if available
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guest';
   
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -118,28 +175,37 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Smart Grid Electricity Consumption Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative rounded-full h-10 w-10 p-0">
-                  <Avatar>
-                    <AvatarImage src={user?.user_metadata?.avatar_url} />
-                    <AvatarFallback>{getInitials(userName)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>{userName}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {(user || loggedIn) ? (
+              // User is logged in, show avatar dropdown
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative rounded-full h-10 w-10 p-0">
+                    <Avatar>
+                      <AvatarImage src={user?.user_metadata?.avatar_url} />
+                      <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>{userName}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              // User is not logged in, show sign in button
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" onClick={handleSignInClick}>Sign In</Button>
+                <Button onClick={handleRegisterClick}>Register</Button>
+              </div>
+            )}
             <ThemeToggle />
           </div>
         </div>
@@ -189,22 +255,51 @@ const Index = () => {
         
         {/* File Upload Section */}
         <div className="mt-8">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="w-full">Upload Data</Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle>Upload Data</SheetTitle>
-                <SheetDescription>
-                  Upload your CSV data files to analyze and visualize your energy consumption
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-6">
-                <EnhancedFileUploader onDataUploaded={handleDataUpload} />
-              </div>
-            </SheetContent>
-          </Sheet>
+          {(user || loggedIn) ? (
+            // User is logged in, show upload sheet
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Data
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[540px]">
+                <SheetHeader>
+                  <SheetTitle>Upload Data</SheetTitle>
+                  <SheetDescription>
+                    Upload your CSV data files to analyze and visualize your energy consumption
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="py-6">
+                  <EnhancedFileUploader onDataUploaded={handleDataUpload} />
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            // User is not logged in, show button that triggers auth dialog
+            <>
+              <Button variant="outline" className="w-full" onClick={handleUploadClick}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Data
+              </Button>
+              
+              <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Authentication Required</DialogTitle>
+                    <DialogDescription>
+                      You need to sign in or register to upload your own data.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col space-y-3 py-4">
+                    <Button onClick={handleSignInClick}>Sign In</Button>
+                    <Button variant="outline" onClick={handleRegisterClick}>Register</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </div>
       </main>
       

@@ -19,9 +19,16 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
+          {/* Public access to dashboard with default data */}
           <Route path="/" element={<Index />} />
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/register" element={<Register />} />
+          {/* Protected route for dashboard with user-specific data */}
+          <Route path="/dashboard" element={
+            <PrivateRoute>
+              <Index loggedIn={true} />
+            </PrivateRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

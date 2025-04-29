@@ -33,8 +33,18 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
     chart: {
       type: 'line' as const,
       height: 400,
+      fontFamily: 'Inter, sans-serif',
       toolbar: {
-        show: true
+        show: true,
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+          reset: true
+        }
       },
       animations: {
         enabled: true,
@@ -67,6 +77,8 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
     },
     markers: {
       size: 4,
+      colors: ['#3b82f6', '#ef4444'],
+      strokeWidth: 0,
       hover: {
         size: 7
       }
@@ -74,7 +86,10 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
     xaxis: {
       type: 'datetime' as const,
       title: {
-        text: 'Time Period'
+        text: 'Time Period',
+        style: {
+          fontWeight: 500
+        }
       },
       labels: {
         formatter: function(val: any) {
@@ -82,19 +97,43 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
             year: 'numeric',
             month: 'short'
           });
+        },
+        style: {
+          colors: '#718096'
         }
+      },
+      tickAmount: 6,
+      axisBorder: {
+        show: true,
+        color: '#e0e0e0'
       }
     },
     yaxis: {
       title: {
-        text: 'Electricity Consumption (kWh)'
+        text: 'Electricity Consumption (kWh)',
+        style: {
+          fontWeight: 500
+        }
       },
-      min: Math.min(...data.map(item => item.consumption)) * 0.8,
-      max: Math.max(...data.map(item => item.consumption)) * 1.2
+      labels: {
+        formatter: function(val: number) {
+          return val.toFixed(1);
+        },
+        style: {
+          colors: '#718096'
+        }
+      },
+      min: function(min: number) { return Math.floor(min * 0.8); },
+      max: function(max: number) { return Math.ceil(max * 1.2); },
+      forceNiceScale: true
     },
     tooltip: {
       shared: true,
       intersect: false,
+      style: {
+        fontSize: '12px',
+        fontFamily: 'Inter, sans-serif'
+      },
       y: {
         formatter: function(y: any) {
           return y.toLocaleString() + " kWh";
@@ -114,12 +153,30 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
       horizontalAlign: 'right' as const,
       floating: false,
       offsetY: -25,
-      offsetX: -5
-    }
+      offsetX: -5,
+      markers: {
+        size: 8,
+        strokeWidth: 0,
+        radius: 12
+      }
+    },
+    responsive: [
+      {
+        breakpoint: 768,
+        options: {
+          chart: {
+            height: 300
+          },
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    ]
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
+    <div className="bg-white rounded-lg shadow-md p-4 dark:bg-black dark:border dark:border-gray-800">
       <h3 className="text-lg font-semibold mb-4">Electricity Consumption Forecast</h3>
       <div className="chart-container" style={{ height: '400px' }}>
         <ReactApexChart

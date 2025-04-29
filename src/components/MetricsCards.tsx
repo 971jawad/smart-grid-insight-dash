@@ -13,8 +13,11 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
   const gaugeOptions = (value: number, max: number, title: string, color: string, format: string) => ({
     chart: {
       type: 'radialBar' as const,
-      height: 200,
-      offsetY: -10
+      height: 220,
+      toolbar: {
+        show: false
+      },
+      fontFamily: 'Inter, sans-serif'
     },
     plotOptions: {
       radialBar: {
@@ -24,87 +27,116 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
           margin: 0,
           size: '70%',
           background: '#fff',
-          position: 'front' as const
+          position: 'front' as const,
+          dropShadow: {
+            enabled: false
+          }
         },
         track: {
-          background: '#e7e7e7',
-          strokeWidth: '67%',
+          background: '#f2f2f2',
+          strokeWidth: '100%',
           margin: 0
         },
         dataLabels: {
           name: {
-            offsetY: -10,
+            show: true,
+            fontSize: '16px',
+            fontWeight: 'bold',
+            fontFamily: 'Inter, sans-serif',
             color: '#333',
-            fontSize: '13px'
+            offsetY: -10
           },
           value: {
-            color,
-            fontSize: '24px',
             show: true,
+            fontSize: '30px',
+            fontWeight: 'bold',
+            fontFamily: 'Inter, sans-serif',
+            color: color,
+            offsetY: 5,
             formatter: (val: any) => {
               if (format === 'percent') {
-                return `${(val * max / 100).toFixed(2)}`;
+                return (value).toFixed(3);
+              } else if (format === 'integer') {
+                return Math.round(value).toString();
               }
-              return `${Math.round(val * max / 100)}`;
+              return value.toFixed(2);
             }
           }
         }
       }
     },
     fill: {
-      colors: [color]
+      type: 'gradient',
+      gradient: {
+        shade: 'dark',
+        type: 'horizontal',
+        shadeIntensity: 0.5,
+        gradientToColors: [color],
+        inverseColors: false,
+        opacityFrom: 1,
+        opacityTo: 1,
+        stops: [0, 100]
+      }
     },
-    series: [value / max * 100],
-    labels: [title]
+    stroke: {
+      lineCap: 'round'
+    },
+    series: [calculatePercentage(value, max)],
+    labels: [title],
+    colors: [color]
   });
 
-  // Normalize values for charts
-  // Lower MAE and MSE are better, so we invert the percentage
-  const maeNormalized = 100 - (mae / 500) * 100; // Assuming 500 is a bad MAE
-  const mseNormalized = 100 - (mse / 100000) * 100; // Assuming 100,000 is a bad MSE
-  const r2Normalized = r2 * 100; // R² is already between 0-1
+  // Calculate the percentage for the gauge based on the metric
+  const calculatePercentage = (value: number, max: number) => {
+    // For MAE and MSE, lower is better, so we invert the percentage
+    if (value === mae || value === mse) {
+      return Math.max(0, Math.min(100, 100 - (value / max * 100)));
+    }
+    // For R², higher is better (0-1 range)
+    return Math.max(0, Math.min(100, value * 100));
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">Mean Absolute Error</h3>
         <ReactApexChart
-          options={gaugeOptions(maeNormalized, 500, 'MAE', '#22c55e', 'number')}
-          series={[maeNormalized]}
+          options={gaugeOptions(mae, 500, 'MAE', '#22c55e', 'number')}
+          series={[calculatePercentage(mae, 500)]}
           type="radialBar"
-          height={200}
+          height={220}
         />
-        <p className="text-center text-gray-700 mt-2">
-          MAE: {mae.toFixed(2)} kWh
-          <span className="block text-xs text-gray-500 mt-1">Lower is better</span>
+        <p className="text-center mt-4">
+          <span className="block text-2xl font-bold">{mae.toFixed(2)} kWh</span>
+          <span className="text-sm text-gray-500">Lower is better</span>
         </p>
       </div>
       
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">Mean Squared Error</h3>
         <ReactApexChart
-          options={gaugeOptions(mseNormalized, 100000, 'MSE', '#3b82f6', 'number')}
-          series={[mseNormalized]}
+          options={gaugeOptions(mse, 100000, 'MSE', '#3b82f6', 'integer')}
+          series={[calculatePercentage(mse, 100000)]}
           type="radialBar"
-          height={200}
+          height={220}
         />
-        <p className="text-center text-gray-700 mt-2">
-          MSE: {mse.toFixed(2)}
-          <span className="block text-xs text-gray-500 mt-1">Lower is better</span>
+        <p className="text-center mt-4">
+          <span className="block text-2xl font-bold">{mse.toFixed(2)}</span>
+          <span className="text-sm text-gray-500">Lower is better</span>
         </p>
       </div>
       
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">R² Score</h3>
         <ReactApexChart
-          options={gaugeOptions(r2Normalized, 1, 'R²', '#8b5cf6', 'percent')}
-          series={[r2Normalized]}
+          options={gaugeOptions(r2, 1, 'R²', '#8b5cf6', 'percent')}
+          series={[calculatePercentage(r2, 1)]} 
           type="radialBar"
-          height={200}
+          height={220}
         />
-        <p className="text-center text-gray-700 mt-2">
-          R²: {r2.toFixed(3)}
-          <span className="block text-xs text-gray-500 mt-1">Higher is better</span>
+        <p className="text-center mt-4">
+          <span className="block text-2xl font-bold">{r2.toFixed(3)}</span>
+          <span className="text-sm text-gray-500">Higher is better</span>
         </p>
       </div>
     </div>
