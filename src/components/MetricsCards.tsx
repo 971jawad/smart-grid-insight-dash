@@ -79,7 +79,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
       }
     },
     stroke: {
-      lineCap: 'round'
+      lineCap: 'round' as const // Fix: TypeScript requires this to be specifically "round", "butt", or "square"
     },
     series: [calculatePercentage(value, max)],
     labels: [title],
