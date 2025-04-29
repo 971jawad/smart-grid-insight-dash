@@ -117,6 +117,137 @@ export const generatePdfReport = async (
       }
     }
     
+    // Add monthly analysis on a new page
+    pdf.addPage();
+    pdf.setFontSize(14);
+    pdf.text('Monthly Consumption Analysis', pdfWidth / 2, 15, { align: 'center' });
+    
+    // Add month over month analysis
+    pdf.setFontSize(12);
+    pdf.text('Month-over-Month Comparison', 15, 25);
+    
+    // Group data by year and month
+    const monthlyData: Record<string, Record<string, number>> = {};
+    data.forEach(item => {
+      const year = item.date.substring(0, 4);
+      const month = item.date.substring(5, 7);
+      if (!monthlyData[year]) monthlyData[year] = {};
+      monthlyData[year][month] = item.consumption;
+    });
+    
+    // Display month-over-month table
+    pdf.setFontSize(10);
+    let monthYPos = 35;
+    
+    // Month headers
+    pdf.text('Year', 15, monthYPos);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    monthNames.forEach((month, index) => {
+      pdf.text(month, 35 + index * 13, monthYPos);
+    });
+    monthYPos += 7;
+    
+    // Add a line separator
+    pdf.line(15, monthYPos - 3, pdfWidth - 15, monthYPos - 3);
+    
+    // Year rows with monthly data
+    for (const year of sortedYears) {
+      pdf.text(year, 15, monthYPos);
+      
+      for (let i = 0; i < 12; i++) {
+        const month = (i + 1).toString().padStart(2, '0');
+        const consumption = monthlyData[year]?.[month] || 0;
+        
+        if (consumption > 0) {
+          pdf.text(consumption.toFixed(0), 35 + i * 13, monthYPos);
+        } else {
+          pdf.text('-', 35 + i * 13, monthYPos);
+        }
+      }
+      
+      monthYPos += 7;
+      
+      // Add a new page if we're running out of space
+      if (monthYPos > pdfHeight - 20 && year !== sortedYears[sortedYears.length - 1]) {
+        pdf.addPage();
+        monthYPos = 20;
+        
+        // Month headers again
+        pdf.text('Year', 15, monthYPos);
+        monthNames.forEach((month, index) => {
+          pdf.text(month, 35 + index * 13, monthYPos);
+        });
+        monthYPos += 7;
+        pdf.line(15, monthYPos - 3, pdfWidth - 15, monthYPos - 3);
+      }
+    }
+    
+    // Add statistical insights
+    pdf.addPage();
+    pdf.setFontSize(14);
+    pdf.text('Statistical Insights', pdfWidth / 2, 15, { align: 'center' });
+    
+    // Find overall stats
+    const allConsumption = data.map(item => item.consumption);
+    const maxConsumption = Math.max(...allConsumption);
+    const minConsumption = Math.min(...allConsumption);
+    const avgConsumption = allConsumption.reduce((sum, val) => sum + val, 0) / allConsumption.length;
+    
+    // Find highest and lowest months overall
+    const highestMonth = [...data].sort((a, b) => b.consumption - a.consumption)[0];
+    const lowestMonth = [...data].sort((a, b) => a.consumption - b.consumption)[0];
+    
+    pdf.setFontSize(12);
+    pdf.text('Overall Statistics', 15, 25);
+    
+    pdf.setFontSize(10);
+    let statYPos = 35;
+    
+    pdf.text(`Highest Monthly Consumption: ${maxConsumption.toFixed(2)} kWh (${new Date(highestMonth.date).toLocaleDateString('default', {year: 'numeric', month: 'long'})})`, 20, statYPos);
+    statYPos += 7;
+    
+    pdf.text(`Lowest Monthly Consumption: ${minConsumption.toFixed(2)} kWh (${new Date(lowestMonth.date).toLocaleDateString('default', {year: 'numeric', month: 'long'})})`, 20, statYPos);
+    statYPos += 7;
+    
+    pdf.text(`Average Monthly Consumption: ${avgConsumption.toFixed(2)} kWh`, 20, statYPos);
+    statYPos += 7;
+    
+    // Calculate seasonal patterns
+    pdf.setFontSize(12);
+    pdf.text('Seasonal Patterns', 15, statYPos + 10);
+    statYPos += 20;
+    
+    // Group by season
+    const seasons: Record<string, number[]> = {
+      'Winter (Dec-Feb)': [],
+      'Spring (Mar-May)': [],
+      'Summer (Jun-Aug)': [],
+      'Fall (Sep-Nov)': []
+    };
+    
+    data.forEach(item => {
+      const month = parseInt(item.date.substring(5, 7));
+      
+      if (month === 12 || month === 1 || month === 2) {
+        seasons['Winter (Dec-Feb)'].push(item.consumption);
+      } else if (month >= 3 && month <= 5) {
+        seasons['Spring (Mar-May)'].push(item.consumption);
+      } else if (month >= 6 && month <= 8) {
+        seasons['Summer (Jun-Aug)'].push(item.consumption);
+      } else {
+        seasons['Fall (Sep-Nov)'].push(item.consumption);
+      }
+    });
+    
+    // Calculate averages
+    Object.entries(seasons).forEach(([season, values]) => {
+      if (values.length > 0) {
+        const average = values.reduce((sum, val) => sum + val, 0) / values.length;
+        pdf.text(`${season} Average: ${average.toFixed(2)} kWh`, 20, statYPos);
+        statYPos += 7;
+      }
+    });
+    
     // Add footer
     const today = new Date().toLocaleDateString();
     pdf.setFontSize(8);
