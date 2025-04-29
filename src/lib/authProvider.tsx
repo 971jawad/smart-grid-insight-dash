@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password
       });
       if (!error) {
-        navigate('/');
+        navigate('/dashboard');
       }
       return { error };
     } catch (error) {
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     console.log('Signing out');
     await supabase.auth.signOut();
-    navigate('/sign-in');
+    navigate('/');
   };
 
   const value = {

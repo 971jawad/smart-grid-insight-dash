@@ -18,9 +18,9 @@ const SignIn = () => {
   const { signIn, user } = useAuth();
 
   useEffect(() => {
-    // If user is already logged in, redirect to home page
+    // If user is already logged in, redirect to dashboard page
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -45,7 +45,7 @@ const SignIn = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/dashboard`
         }
       });
       
