@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -243,6 +242,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
                 mae={modelMetrics.mae} 
                 mse={modelMetrics.mse} 
                 r2={modelMetrics.r2} 
+                modelName={selectedModel}
               />
             </div>
           )}

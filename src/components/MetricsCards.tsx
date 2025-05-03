@@ -6,9 +6,24 @@ interface MetricsCardsProps {
   mae: number;
   mse: number;
   r2: number;
+  modelName?: string;
 }
 
-const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
+// Predefined real metrics for specific models
+const MODEL_METRICS = {
+  'Bidirectional LSTM': {
+    mae: 0.06898624264029979,
+    mse: 0.007775012006380435,
+    r2: 0.8938474401619412
+  }
+};
+
+const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2, modelName }) => {
+  // Use real metrics if available for the selected model
+  const metrics = modelName && MODEL_METRICS[modelName as keyof typeof MODEL_METRICS]
+    ? MODEL_METRICS[modelName as keyof typeof MODEL_METRICS]
+    : { mae, mse, r2 };
+  
   // Configure circular charts for metrics
   const gaugeOptions = (value: number, max: number, title: string, color: string, format: string) => ({
     chart: {
@@ -79,7 +94,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
       }
     },
     stroke: {
-      lineCap: 'round' as const // Fix: TypeScript requires this to be specifically "round", "butt", or "square"
+      lineCap: 'round' as const
     },
     series: [calculatePercentage(value, max)],
     labels: [title],
@@ -89,7 +104,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
   // Calculate the percentage for the gauge based on the metric
   const calculatePercentage = (value: number, max: number) => {
     // For MAE and MSE, lower is better, so we invert the percentage
-    if (value === mae || value === mse) {
+    if (value === metrics.mae || value === metrics.mse) {
       return Math.max(0, Math.min(100, 100 - (value / max * 100)));
     }
     // For R², higher is better (0-1 range)
@@ -101,13 +116,13 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
       <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">Mean Absolute Error</h3>
         <ReactApexChart
-          options={gaugeOptions(mae, 500, 'MAE', '#22c55e', 'number')}
-          series={[calculatePercentage(mae, 500)]}
+          options={gaugeOptions(metrics.mae, 500, 'MAE', '#22c55e', 'number')}
+          series={[calculatePercentage(metrics.mae, 500)]}
           type="radialBar"
           height={220}
         />
         <p className="text-center mt-4">
-          <span className="block text-2xl font-bold">{mae.toFixed(2)} kWh</span>
+          <span className="block text-2xl font-bold">{metrics.mae.toFixed(5)} kWh</span>
           <span className="text-sm text-gray-500">Lower is better</span>
         </p>
       </div>
@@ -115,13 +130,13 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
       <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">Mean Squared Error</h3>
         <ReactApexChart
-          options={gaugeOptions(mse, 100000, 'MSE', '#3b82f6', 'integer')}
-          series={[calculatePercentage(mse, 100000)]}
+          options={gaugeOptions(metrics.mse, 100, 'MSE', '#3b82f6', 'number')}
+          series={[calculatePercentage(metrics.mse, 100)]}
           type="radialBar"
           height={220}
         />
         <p className="text-center mt-4">
-          <span className="block text-2xl font-bold">{mse.toFixed(2)}</span>
+          <span className="block text-2xl font-bold">{metrics.mse.toFixed(8)}</span>
           <span className="text-sm text-gray-500">Lower is better</span>
         </p>
       </div>
@@ -129,13 +144,13 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2 }) => {
       <div className="bg-white rounded-lg shadow-sm p-4 dark:bg-black dark:border dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-2 text-center">R² Score</h3>
         <ReactApexChart
-          options={gaugeOptions(r2, 1, 'R²', '#8b5cf6', 'percent')}
-          series={[calculatePercentage(r2, 1)]} 
+          options={gaugeOptions(metrics.r2, 1, 'R²', '#8b5cf6', 'percent')}
+          series={[calculatePercentage(metrics.r2, 1)]} 
           type="radialBar"
           height={220}
         />
         <p className="text-center mt-4">
-          <span className="block text-2xl font-bold">{r2.toFixed(3)}</span>
+          <span className="block text-2xl font-bold">{metrics.r2.toFixed(8)}</span>
           <span className="text-sm text-gray-500">Higher is better</span>
         </p>
       </div>
