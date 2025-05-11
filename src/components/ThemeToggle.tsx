@@ -18,19 +18,17 @@ export function ThemeToggle() {
     <Button
       variant="outline"
       size="icon"
-      className="relative w-16 h-8 rounded-full transition-colors duration-300"
+      className="relative w-10 h-10 rounded-full bg-secondary/20 border-secondary/30 hover:bg-secondary/40 transition-all duration-300"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      aria-label="Toggle theme"
     >
-      <div
-        className={`absolute left-1 transform transition-transform duration-300 ${
-          theme === "dark" ? "translate-x-7" : "translate-x-0"
-        }`}
-      >
+      <div className="absolute inset-0 flex items-center justify-center">
         {theme === "dark" ? (
-          <Moon className="h-6 w-6" />
+          <Moon className="h-5 w-5 text-blue-200 transition-transform duration-500 animate-fade-in" />
         ) : (
-          <Sun className="h-6 w-6" />
+          <Sun className="h-5 w-5 text-amber-500 transition-transform duration-500 animate-fade-in" />
         )}
+        <span className="sr-only">Toggle theme</span>
       </div>
     </Button>
   );

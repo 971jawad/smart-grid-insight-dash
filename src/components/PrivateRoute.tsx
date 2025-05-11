@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/authProvider';
+import { toast } from "sonner";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -9,8 +10,15 @@ interface PrivateRouteProps {
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   console.log('PrivateRoute: User authenticated?', Boolean(user), 'Loading?', loading);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      toast.error("Please sign in to access this page");
+    }
+  }, [user, loading]);
 
   if (loading) {
     return (
@@ -25,7 +33,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
 
   if (!user) {
     console.log('Not authenticated, redirecting to /sign-in');
-    return <Navigate to="/sign-in" />;
+    return <Navigate to="/sign-in" state={{ from: location.pathname }} />;
   }
 
   console.log('Authenticated, rendering protected content');

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   session: Session | null;
@@ -31,6 +32,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
+        
+        // Handle specific auth events
+        if (event === 'SIGNED_IN') {
+          toast.success('Signed in successfully');
+          navigate('/dashboard');
+        } else if (event === 'SIGNED_OUT') {
+          toast.info('Signed out');
+        }
       }
     );
 
@@ -43,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -52,8 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password
       });
+      
       if (!error) {
-        navigate('/dashboard');
+        // Navigation happens in the onAuthStateChange handler
       }
       return { error };
     } catch (error) {
@@ -67,10 +77,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
-          data: meta
+          data: meta,
+          emailRedirectTo: `${window.location.origin}/sign-in`
         }
       });
+      
       if (!error) {
+        toast.success('Registration successful! Please check your email to verify your account');
         navigate('/sign-in');
       }
       return { error };
@@ -82,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     console.log('Signing out');
     await supabase.auth.signOut();
-    navigate('/');
+    // Navigation happens in the onAuthStateChange handler
   };
 
   const value = {

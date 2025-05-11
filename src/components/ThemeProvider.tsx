@@ -23,6 +23,14 @@ export function ThemeProvider({
   children, 
   ...props 
 }: ThemeProviderProps) {
-  // Cast the props to any to avoid type issues with NextThemesProvider
+  // Add a listener to apply transitions only after initial theme load
+  React.useEffect(() => {
+    document.documentElement.classList.add('theme-transition-ready');
+    
+    return () => {
+      document.documentElement.classList.remove('theme-transition-ready');
+    };
+  }, []);
+  
   return <NextThemesProvider {...props as any}>{children}</NextThemesProvider>
 }
