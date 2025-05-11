@@ -29,9 +29,14 @@ export const MODEL_CHARACTERISTICS = {
 interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (value: string) => void;
+  isModelLoading?: boolean;
 }
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelChange }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({ 
+  selectedModel, 
+  onModelChange,
+  isModelLoading = false
+}) => {
   const modelInfo = selectedModel ? MODEL_CHARACTERISTICS[selectedModel as keyof typeof MODEL_CHARACTERISTICS] : null;
 
   return (
@@ -47,11 +52,12 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelCha
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <p>{modelInfo?.description || 'Choose a model to generate predictions'}</p>
+              {isModelLoading && <p className="text-amber-500 mt-1">Model is loading...</p>}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
-      <Select value={selectedModel} onValueChange={onModelChange}>
+      <Select value={selectedModel} onValueChange={onModelChange} disabled={isModelLoading}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select model for predictions" />
         </SelectTrigger>
@@ -62,6 +68,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelCha
           <SelectItem value="DeepAR">DeepAR</SelectItem>
         </SelectContent>
       </Select>
+      {isModelLoading && (
+        <p className="text-xs text-amber-500 mt-1">Loading model from GitHub...</p>
+      )}
     </div>
   );
 };

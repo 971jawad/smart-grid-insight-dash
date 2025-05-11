@@ -1,6 +1,6 @@
-
 import React from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { MODEL_METRICS } from '@/utils/modelLoader';
 
 interface MetricsCardsProps {
   mae: number;
@@ -8,25 +8,6 @@ interface MetricsCardsProps {
   r2: number;
   modelName?: string;
 }
-
-// Predefined real metrics for specific models
-const MODEL_METRICS = {
-  'Bidirectional LSTM': {
-    mae: 0.06898624264029979,
-    mse: 0.007775012006380435,
-    r2: 0.8938474401619412
-  },
-  'GRU': {
-    mae: 0.08247126781120773,
-    mse: 0.00986050934169316,
-    r2: 0.8653740589636583
-  },
-  'DeepAR': {
-    mae: 0.07626980876023641,
-    mse: 0.010184665602040177,
-    r2: 0.8508961090804059
-  }
-};
 
 const MetricsCards: React.FC<MetricsCardsProps> = ({ mae, mse, r2, modelName }) => {
   // Use real metrics if available for the selected model
