@@ -182,21 +182,21 @@ export const getModelPerformance = (model: string): ModelPerformance => {
   const performances: Record<string, ModelPerformance> = {
     'GRU': {
       model: 'GRU',
-      mae: 234.5,
-      mse: 82451.3,
-      r2: 0.86
+      mae: 0.08247126781120773,
+      mse: 0.00986050934169316,
+      r2: 0.8653740589636583
     },
     'Bidirectional LSTM': {
       model: 'Bidirectional LSTM',
-      mae: 189.2,
-      mse: 68742.1,
-      r2: 0.91
+      mae: 0.06898624264029979,
+      mse: 0.007775012006380435,
+      r2: 0.8938474401619412
     },
-    'NBEATS': {
-      model: 'NBEATS',
-      mae: 205.7,
-      mse: 71523.4,
-      r2: 0.89
+    'DeepAR': {
+      model: 'DeepAR',
+      mae: 0.07626980876023641,
+      mse: 0.010184665602040177,
+      r2: 0.8508961090804059
     }
   };
   

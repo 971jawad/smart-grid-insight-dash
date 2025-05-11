@@ -18,11 +18,11 @@ export const MODEL_CHARACTERISTICS = {
     trendStrength: 0.85,
     noiseReduction: 0.8,
   },
-  'NBEATS': {
-    description: 'Neural Basis Expansion Analysis for Time Series - Specialized for time series forecasting.',
-    seasonalStrength: 0.85,
-    trendStrength: 0.9,
-    noiseReduction: 0.75,
+  'DeepAR': {
+    description: 'Deep AutoRegressive model - A probabilistic forecasting model with automatic feature extraction.',
+    seasonalStrength: 0.8,
+    trendStrength: 0.85,
+    noiseReduction: 0.7,
   }
 };
 
@@ -59,7 +59,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onModelCha
           <SelectItem value="none">Default Data Visualization</SelectItem>
           <SelectItem value="GRU">GRU</SelectItem>
           <SelectItem value="Bidirectional LSTM">Bidirectional LSTM</SelectItem>
-          <SelectItem value="NBEATS">NBEATS</SelectItem>
+          <SelectItem value="DeepAR">DeepAR</SelectItem>
         </SelectContent>
       </Select>
     </div>
