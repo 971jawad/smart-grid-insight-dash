@@ -23,9 +23,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/register" element={<Register />} />
-          {/* Protected route for dashboard with user-specific data */}
+          {/* Dashboard is now accessible without authentication, but some features will be restricted */}
           <Route path="/dashboard" element={
-            <PrivateRoute>
+            <PrivateRoute requireAuth={false}>
               <Index loggedIn={true} />
             </PrivateRoute>
           } />

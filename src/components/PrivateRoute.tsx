@@ -6,19 +6,20 @@ import { toast } from "sonner";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
+  requireAuth?: boolean; // New prop to determine if auth is required
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requireAuth = true }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   
-  console.log('PrivateRoute: User authenticated?', Boolean(user), 'Loading?', loading);
+  console.log('PrivateRoute: User authenticated?', Boolean(user), 'Loading?', loading, 'RequireAuth?', requireAuth);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && requireAuth) {
       toast.error("Please sign in to access this page");
     }
-  }, [user, loading]);
+  }, [user, loading, requireAuth]);
 
   if (loading) {
     return (
@@ -31,12 +32,12 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
-    console.log('Not authenticated, redirecting to /sign-in');
+  if (!user && requireAuth) {
+    console.log('Auth required but not authenticated, redirecting to /sign-in');
     return <Navigate to="/sign-in" state={{ from: location.pathname }} />;
   }
 
-  console.log('Authenticated, rendering protected content');
+  console.log('Rendering protected content, auth not required or user is authenticated');
   return <>{children}</>;
 };
 
