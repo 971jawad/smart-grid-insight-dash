@@ -29,6 +29,12 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
     }))
   };
   
+  // Build the chart series based on available data
+  const series = [
+    historicalSeries,
+    ...(predictionData.length > 0 ? [predictionSeries] : [])
+  ];
+  
   const options = {
     chart: {
       type: 'line' as const,
@@ -117,7 +123,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
       },
       labels: {
         formatter: function(val: number) {
-          return val.toFixed(1);
+          return val.toLocaleString();
         },
         style: {
           colors: '#718096'
@@ -176,15 +182,21 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data }) => {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 dark:bg-black dark:border dark:border-gray-800">
+    <div className="bg-card rounded-lg shadow-md p-4">
       <h3 className="text-lg font-semibold mb-4">Electricity Consumption Forecast</h3>
       <div className="chart-container" style={{ height: '400px' }}>
-        <ReactApexChart
-          options={options}
-          series={[historicalSeries, predictionSeries]}
-          type="line"
-          height={400}
-        />
+        {data.length > 0 ? (
+          <ReactApexChart
+            options={options}
+            series={series}
+            type="line"
+            height={400}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Loading data...
+          </div>
+        )}
       </div>
     </div>
   );

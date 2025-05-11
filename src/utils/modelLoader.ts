@@ -17,6 +17,9 @@ const MODEL_PATHS = {
   }
 };
 
+// Excel data URL for default visualization
+export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data_interpolated.xlsx';
+
 // Model performance metrics (pre-evaluated)
 export const MODEL_METRICS = {
   'Bidirectional LSTM': {
@@ -121,3 +124,35 @@ export const generateModelPredictions = async (
     return null;
   }
 };
+
+/**
+ * Fetch and parse Excel data from GitHub
+ */
+export const fetchExcelData = async (): Promise<{date: string, consumption: number}[]> => {
+  try {
+    console.log('Fetching Excel data from GitHub...');
+    
+    // Since we can't directly parse Excel in browser, we'll use a pre-processed JSON version
+    // In a real-world scenario, you might want to convert the Excel to JSON on the server
+    const response = await fetch('https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data.json');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Excel data fetched successfully');
+    
+    // Format the data to match our ConsumptionData structure
+    return data.map((item: any) => ({
+      date: item.date || `${item.year}-${String(item.month).padStart(2, '0')}-01`,
+      consumption: Number(item.consumption) || Number(item.value),
+      isPrediction: false
+    }));
+  } catch (error) {
+    console.error('Error fetching Excel data:', error);
+    // Return empty array in case of error
+    return [];
+  }
+};
+

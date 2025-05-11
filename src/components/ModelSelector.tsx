@@ -42,7 +42,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   return (
     <div className="w-full max-w-xs">
       <div className="flex items-center mb-1">
-        <label className="block text-sm font-medium text-gray-700 mr-2">
+        <label className="block text-sm font-medium text-gray-700 mr-2 dark:text-gray-300">
           Select Forecasting Model
         </label>
         <TooltipProvider>

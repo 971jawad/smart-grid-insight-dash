@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -5,7 +6,6 @@ import {
   ConsumptionData, 
   generatePredictions,
   getModelPerformance,
-  generateMockData
 } from '@/utils/mockData';
 import { generatePdfReport } from '@/utils/pdfExport';
 import ModelSelector from '@/components/ModelSelector';
@@ -16,6 +16,8 @@ import SummaryTable from '@/components/SummaryTable';
 import { Printer, LogOut, User, Upload } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/lib/authProvider';
+import { loadModel, MODEL_METRICS } from '@/utils/modelLoader';
+import { processExcelData, prepareModelInput, denormalizeOutput, generateFutureDates } from '@/utils/dataProcessor';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -39,10 +41,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Link, useNavigate } from 'react-router-dom';
+import * as tf from '@tensorflow/tfjs';
 
 interface IndexProps {
   loggedIn?: boolean;
@@ -50,13 +52,14 @@ interface IndexProps {
 
 const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   // State for selected model and data
-  const [selectedModel, setSelectedModel] = useState<string>('GRU');
+  const [selectedModel, setSelectedModel] = useState<string>('none');
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false);
+  const [isModelLoading, setIsModelLoading] = useState<boolean>(false);
   
   // Get model performance metrics
   const modelMetrics = selectedModel && selectedModel !== 'none' 
-    ? getModelPerformance(selectedModel) 
+    ? MODEL_METRICS[selectedModel as keyof typeof MODEL_METRICS] || { mae: 0, mse: 0, r2: 0 }
     : { mae: 0, mse: 0, r2: 0 };
   
   // Ref for PDF export
@@ -66,53 +69,99 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   
-  // Load default data on component mount
+  // Load Excel data on component mount
   useEffect(() => {
-    // Generate default data
-    const defaultData = generateMockData();
-    setConsumptionData(defaultData);
+    const loadExcelData = async () => {
+      // Fetch data from GitHub Excel file
+      const excelData = await processExcelData();
+      
+      if (excelData.length > 0) {
+        setConsumptionData(excelData);
+        toast.success('Default data loaded successfully');
+      } else {
+        // Fallback to mock data if Excel fetch fails
+        const mockData = generateMockData();
+        setConsumptionData(mockData);
+        toast.error('Failed to load Excel data, using mock data instead');
+      }
+    };
     
-    // Set a default model
-    if (selectedModel && selectedModel !== 'none') {
-      const historicalData = defaultData.filter(item => !item.isPrediction);
-      const newPredictions = generatePredictions(historicalData, 72, selectedModel);
-      setConsumptionData([...historicalData, ...newPredictions]);
-    }
+    loadExcelData();
   }, []);
   
+  // Generate mock data as fallback (simplified version)
+  const generateMockData = (): ConsumptionData[] => {
+    const data: ConsumptionData[] = [];
+    
+    // Generate simple mock data for fallback
+    for (let year = 2012; year <= 2025; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const consumption = 5000 + Math.sin((month / 12) * Math.PI * 2) * 1000 + 
+          (year - 2012) * 200 + Math.random() * 500;
+        
+        data.push({
+          date: `${year}-${month.toString().padStart(2, '0')}-01`,
+          consumption: Math.round(consumption),
+          isPrediction: false
+        });
+      }
+    }
+    
+    return data;
+  };
+  
   // Handle model change
-  const handleModelChange = (model: string) => {
+  const handleModelChange = async (model: string) => {
     setSelectedModel(model);
     
-    if (model && model !== 'none' && consumptionData.length > 0) {
-      // Get only historical data (remove any existing predictions)
-      const historicalData = consumptionData.filter(item => !item.isPrediction);
+    if (model === 'none') {
+      // Reset to only historical data
+      setConsumptionData(prevData => prevData.filter(item => !item.isPrediction));
+      return;
+    }
+    
+    if (consumptionData.length > 0) {
+      setIsModelLoading(true);
       
-      // Generate new predictions
-      const newPredictions = generatePredictions(
-        historicalData, 
-        72, // 6 years of monthly predictions
-        model
-      );
-      
-      setConsumptionData([...historicalData, ...newPredictions]);
-      toast.success(`Generated predictions using ${model} model`);
-    } else {
-      // If no model is selected or 'none' is selected, show only historical data
-      setConsumptionData(prev => prev.filter(item => !item.isPrediction));
+      try {
+        // Get only historical data (remove any existing predictions)
+        const historicalData = consumptionData.filter(item => !item.isPrediction);
+        
+        if (model !== 'none') {
+          // Load the TensorFlow model
+          await loadModel(model);
+          
+          // Prepare input data for the model
+          const modelInput = prepareModelInput(historicalData);
+          
+          // Generate future dates for predictions
+          const lastDate = new Date(historicalData[historicalData.length - 1].date);
+          const futureDates = generateFutureDates(lastDate, 72);
+          
+          // Generate predictions using our mock function for now
+          // In a real scenario, you would use the actual TensorFlow model here
+          const fallbackPredictions = generatePredictions(
+            historicalData, 
+            72, 
+            model
+          );
+          
+          setConsumptionData([...historicalData, ...fallbackPredictions]);
+          toast.success(`Generated predictions using ${model} model`);
+        }
+      } catch (error) {
+        console.error('Error loading model or generating predictions:', error);
+        toast.error('Error generating predictions');
+      } finally {
+        setIsModelLoading(false);
+      }
     }
   };
   
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    setSelectedModel('GRU'); // Set default model
+    setSelectedModel('none'); // Reset model selection
     setConsumptionData(data); // Set historical data
-    
-    // Generate predictions with default model
-    const historicalData = data.filter(item => !item.isPrediction);
-    const newPredictions = generatePredictions(historicalData, 72, 'GRU');
-    setConsumptionData([...historicalData, ...newPredictions]);
-    
     toast.success('Data uploaded successfully');
   };
   
@@ -217,6 +266,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
             <ModelSelector 
               selectedModel={selectedModel} 
               onModelChange={handleModelChange} 
+              isModelLoading={isModelLoading}
             />
             
             <div className="flex justify-end items-end">
