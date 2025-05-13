@@ -18,8 +18,8 @@ const MODEL_PATHS = {
   }
 };
 
-// Excel data URL for default visualization - updated to ensure it exists
-export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/energy_consumption_data.csv';
+// Updated Excel data URL to use the specific file requested
+export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data_interpolated.xlsx';
 
 // Fallback URL in case primary data source fails
 export const FALLBACK_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_consumption.csv';

@@ -36,7 +36,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
     setExpandedYear(expandedYear === year ? null : year);
   };
   
-  // Generate monthly data for a given year
+  // Generate monthly data for a given year with improved calculations
   const generateMonthlyData = (year: string): MonthlyData[] => {
     const monthNames = [
       "January", "February", "March", "April", "May", "June",
@@ -52,49 +52,53 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
     // Sort by month
     yearData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
+    // Map month indices to actual data 
+    const monthMap = new Map<number, ConsumptionData>();
+    
+    // Add all available data to the map
+    for (const item of yearData) {
+      const monthIndex = new Date(item.date).getMonth();
+      monthMap.set(monthIndex, item);
+    }
+    
     // Create monthly data with change percentage
     const monthlyData: MonthlyData[] = [];
     
-    for (let i = 0; i < yearData.length; i++) {
-      const item = yearData[i];
-      const monthIndex = new Date(item.date).getMonth();
-      const previousMonthConsumption = i > 0 ? yearData[i-1].consumption : 0;
-      const changePercentage = i > 0 
-        ? ((item.consumption - previousMonthConsumption) / previousMonthConsumption) * 100
-        : 0;
+    for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+      const item = monthMap.get(monthIndex);
       
-      monthlyData.push({
-        month: monthNames[monthIndex],
-        consumption: item.consumption,
-        change: changePercentage,
-        isPrediction: !!item.isPrediction
-      });
-    }
-    
-    // If year has incomplete months, fill them with zeros
-    if (monthlyData.length < 12) {
-      const existingMonths = new Set(monthlyData.map(m => m.month));
-      
-      // Add missing months with 0 values
-      for (let i = 0; i < monthNames.length; i++) {
-        const monthName = monthNames[i];
-        if (!existingMonths.has(monthName)) {
-          // For missing months, estimate value or set to 0
-          const lastKnownValue = monthlyData.length > 0 
-            ? monthlyData[monthlyData.length - 1].consumption 
-            : 0;
-          
-          monthlyData.push({
-            month: monthName,
-            consumption: 0,
-            change: 0,
-            isPrediction: true // Mark as prediction since it's missing
-          });
-        }
+      if (item) {
+        const previousMonthIndex = monthIndex > 0 ? monthIndex - 1 : 11;
+        const previousYear = monthIndex > 0 ? parseInt(year) : parseInt(year) - 1;
+        
+        // Find previous month's data, check both in current year and previous year for January
+        const previousMonthData = data.find(d => {
+          const date = new Date(d.date);
+          return date.getMonth() === previousMonthIndex && 
+                 date.getFullYear() === previousYear;
+        });
+        
+        const previousMonthConsumption = previousMonthData ? previousMonthData.consumption : 0;
+        
+        const changePercentage = previousMonthConsumption > 0
+          ? ((item.consumption - previousMonthConsumption) / previousMonthConsumption) * 100
+          : 0;
+        
+        monthlyData.push({
+          month: monthNames[monthIndex],
+          consumption: item.consumption,
+          change: changePercentage,
+          isPrediction: !!item.isPrediction
+        });
+      } else {
+        // For missing months, add with zero values and mark as prediction
+        monthlyData.push({
+          month: monthNames[monthIndex],
+          consumption: 0,
+          change: 0,
+          isPrediction: true
+        });
       }
-      
-      // Re-sort by month order
-      monthlyData.sort((a, b) => monthNames.indexOf(a.month) - monthNames.indexOf(b.month));
     }
     
     return monthlyData;
@@ -206,7 +210,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                                         <TableCell className="font-medium">{month.month}</TableCell>
                                         <TableCell>{month.consumption.toLocaleString()}</TableCell>
                                         <TableCell>
-                                          {i === 0 ? '-' : (
+                                          {(i === 0 && parseInt(year) === years[years.length-1]) ? '-' : (
                                             <span className={`${
                                               month.change > 0 
                                                 ? 'text-red-500' 
@@ -214,7 +218,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                                                   ? 'text-green-500' 
                                                   : ''
                                             }`}>
-                                              {month.change.toFixed(2)}%
+                                              {month.change === 0 ? '-' : `${month.change.toFixed(2)}%`}
                                             </span>
                                           )}
                                         </TableCell>

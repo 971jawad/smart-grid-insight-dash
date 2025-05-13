@@ -1,3 +1,4 @@
+
 import { ConsumptionData } from '@/utils/mockData';
 import { fetchExcelData } from '@/utils/modelLoader';
 import { toast } from '@/components/ui/use-toast';
