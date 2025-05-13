@@ -41,11 +41,21 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
     ...(predictionData.length > 0 ? [predictionSeries] : [])
   ];
   
-  // Calculate proper tickAmount based on data length
-  const tickAmount = Math.min(
-    12, // Maximum 12 ticks for readability
-    Math.max(6, Math.ceil(filteredData.length / 10)) // At least 6 ticks, but increase with data volume
-  );
+  // Determine x-axis tick amount based on data size and view mode
+  const getTickAmount = () => {
+    if (yearFilter) {
+      // For single year view, show all 12 months
+      return 12;
+    } else {
+      // For multi-year view, calculate based on data points
+      const dataSpan = filteredData.length;
+      
+      if (dataSpan <= 24) return Math.max(6, Math.floor(dataSpan / 2));
+      if (dataSpan <= 60) return Math.floor(dataSpan / 6); // Show every 6 months for 5 years
+      if (dataSpan <= 120) return Math.floor(dataSpan / 12); // Show yearly for 10 years
+      return Math.floor(dataSpan / 24); // Show every 2 years for more than 10 years
+    }
+  };
 
   const options = {
     chart: {
@@ -124,17 +134,37 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       labels: {
         formatter: function(val: any) {
           const date = new Date(parseInt(val));
-          // For year data show month and year
+          
+          // Different formatting based on view mode and data density
           if (yearFilter) {
+            // For year view, show all months
             return date.toLocaleDateString('default', {
               month: 'short'
             });
           } else {
-            // For multi-year data just show year or quarter
-            return date.toLocaleDateString('default', {
-              year: 'numeric',
-              month: date.getMonth() % 3 === 0 ? 'short' : undefined
-            });
+            // For multi-year view
+            const dataPointsCount = filteredData.length;
+            
+            if (dataPointsCount <= 24) {
+              // For data up to 2 years, show month and year
+              return date.toLocaleDateString('default', {
+                month: 'short',
+                year: '2-digit'
+              });
+            } else if (dataPointsCount <= 72) {
+              // For data between 2-6 years, show quarter markers and year
+              const month = date.getMonth();
+              if (month % 3 === 0) {
+                return `Q${Math.floor(month / 3) + 1} ${date.getFullYear()}`;
+              }
+              return '';
+            } else {
+              // For data over 6 years, just show years
+              if (date.getMonth() === 0) {
+                return date.getFullYear().toString();
+              }
+              return '';
+            }
           }
         },
         style: {
@@ -143,7 +173,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         rotateAlways: false,
         hideOverlappingLabels: true,
       },
-      tickAmount: tickAmount,
+      tickAmount: getTickAmount(),
       axisBorder: {
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
@@ -238,7 +268,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Loading data...
+            No data available for this period
           </div>
         )}
       </div>

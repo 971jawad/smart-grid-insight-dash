@@ -28,15 +28,27 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
       throw new Error('Failed to fetch Excel data after multiple attempts');
     }
     
-    // Map the data to our ConsumptionData format
+    // Map the data to our ConsumptionData format and ensure dates are valid
     const processedData = data.map((item: any) => ({
       date: typeof item.date === 'string' ? item.date : `${item.year}-${String(item.month).padStart(2, '0')}-01`,
       consumption: Number(item.consumption || item.value),
       isPrediction: false
     }));
     
-    console.log(`Successfully processed ${processedData.length} Excel data records`);
-    return processedData;
+    // Validate data - only include entries with valid dates and consumption values
+    const validatedData = processedData.filter(item => {
+      const isValidDate = !isNaN(new Date(item.date).getTime());
+      const isValidConsumption = !isNaN(item.consumption);
+      // Only include data with valid date and consumption values
+      return isValidDate && isValidConsumption;
+    });
+    
+    if (validatedData.length === 0) {
+      throw new Error('No valid data entries found after validation');
+    }
+    
+    console.log(`Successfully processed ${validatedData.length} Excel data records`);
+    return validatedData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
     toast.error('Failed to load default data. Please try again later.');
@@ -130,8 +142,24 @@ export const generatePredictionsFromUploadedData = async (
   try {
     console.log(`Generating predictions using ${modelName} model for uploaded data`);
     
+    // Validate the uploaded data
+    if (!Array.isArray(uploadedData) || uploadedData.length === 0) {
+      throw new Error('No valid data provided for predictions');
+    }
+    
+    // Validate and clean the uploaded data
+    const validData = uploadedData.filter(item => {
+      const isValidDate = !isNaN(new Date(item.date).getTime());
+      const isValidConsumption = !isNaN(item.consumption) && item.consumption > 0;
+      return isValidDate && isValidConsumption;
+    });
+    
+    if (validData.length === 0) {
+      throw new Error('No valid data entries found after validation');
+    }
+    
     // Sort data chronologically
-    const sortedData = [...uploadedData].sort(
+    const sortedData = [...validData].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     
@@ -149,7 +177,7 @@ export const generatePredictionsFromUploadedData = async (
     return [...sortedData, ...predictions];
   } catch (error) {
     console.error('Error generating predictions from uploaded data:', error);
-    toast.error(`Failed to generate predictions with ${modelName}`);
+    toast.error(`Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
     return uploadedData;
   }
 };

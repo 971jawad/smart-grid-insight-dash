@@ -1,12 +1,27 @@
 
 import React, { useState } from 'react';
 import { ConsumptionData, generateYearlySummary } from '@/utils/mockData';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import ConsumptionChart from './ConsumptionChart';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface SummaryTableProps {
   data: ConsumptionData[];
+}
+
+interface MonthlyData {
+  month: string;
+  consumption: number;
+  change: number;
 }
 
 const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
@@ -18,6 +33,42 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
   
   const toggleYear = (year: string) => {
     setExpandedYear(expandedYear === year ? null : year);
+  };
+  
+  // Generate monthly data for a given year
+  const generateMonthlyData = (year: string): MonthlyData[] => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    
+    const yearData = data.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate.getFullYear().toString() === year && !item.isPrediction;
+    });
+    
+    // Sort by month
+    yearData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Create monthly data with change percentage
+    const monthlyData: MonthlyData[] = [];
+    
+    for (let i = 0; i < yearData.length; i++) {
+      const item = yearData[i];
+      const monthIndex = new Date(item.date).getMonth();
+      const previousMonthConsumption = i > 0 ? yearData[i-1].consumption : 0;
+      const changePercentage = i > 0 
+        ? ((item.consumption - previousMonthConsumption) / previousMonthConsumption) * 100
+        : 0;
+      
+      monthlyData.push({
+        month: monthNames[monthIndex],
+        consumption: item.consumption,
+        change: changePercentage
+      });
+    }
+    
+    return monthlyData;
   };
   
   return (
@@ -95,8 +146,52 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                   {isExpanded && (
                     <tr>
                       <td colSpan={6} className="p-4 bg-accent/5">
-                        <div className="p-2">
-                          <ConsumptionChart data={data} yearFilter={year} />
+                        <div className="space-y-6">
+                          <div className="p-2">
+                            <ConsumptionChart data={data} yearFilter={year} />
+                          </div>
+                          
+                          <Card className="mx-auto max-w-5xl">
+                            <CardContent className="pt-6">
+                              <div className="flex items-center mb-4">
+                                <Calendar className="mr-2 h-5 w-5 text-primary" />
+                                <h4 className="text-md font-semibold">Monthly Details for {year}</h4>
+                              </div>
+                              
+                              <div className="overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Month</TableHead>
+                                      <TableHead>Consumption (kWh)</TableHead>
+                                      <TableHead>Change from Previous Month</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {generateMonthlyData(year).map((month, i) => (
+                                      <TableRow key={i}>
+                                        <TableCell className="font-medium">{month.month}</TableCell>
+                                        <TableCell>{month.consumption.toLocaleString()}</TableCell>
+                                        <TableCell>
+                                          {i === 0 ? '-' : (
+                                            <span className={`${
+                                              month.change > 0 
+                                                ? 'text-red-500' 
+                                                : month.change < 0 
+                                                  ? 'text-green-500' 
+                                                  : ''
+                                            }`}>
+                                              {month.change.toFixed(2)}%
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </CardContent>
+                          </Card>
                         </div>
                       </td>
                     </tr>
