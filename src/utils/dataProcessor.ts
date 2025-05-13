@@ -1,22 +1,45 @@
 
 import { ConsumptionData } from '@/utils/mockData';
 import { fetchExcelData } from '@/utils/modelLoader';
+import { toast } from 'sonner';
 
 /**
  * Process data from Excel format to ConsumptionData format
  */
 export const processExcelData = async (): Promise<ConsumptionData[]> => {
   try {
-    const data = await fetchExcelData();
+    console.log('Starting Excel data processing');
+    
+    // Implement retries for better reliability
+    let retryCount = 0;
+    let data: any[] = [];
+    
+    while (retryCount < 3 && data.length === 0) {
+      if (retryCount > 0) {
+        console.log(`Retry attempt ${retryCount} for Excel data`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a second between retries
+      }
+      
+      data = await fetchExcelData();
+      retryCount++;
+    }
+    
+    if (data.length === 0) {
+      throw new Error('Failed to fetch Excel data after multiple attempts');
+    }
     
     // Map the data to our ConsumptionData format
-    return data.map((item: any) => ({
+    const processedData = data.map((item: any) => ({
       date: typeof item.date === 'string' ? item.date : `${item.year}-${String(item.month).padStart(2, '0')}-01`,
       consumption: Number(item.consumption || item.value),
       isPrediction: false
     }));
+    
+    console.log(`Successfully processed ${processedData.length} Excel data records`);
+    return processedData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
+    toast.error('Failed to load default data. Please try again later.');
     return [];
   }
 };
@@ -94,4 +117,39 @@ export const denormalizeOutput = (
   const range = max - min;
   
   return predictions.map(p => (p * range) + min);
+};
+
+/**
+ * Generate predictions from uploaded data using the selected model
+ */
+export const generatePredictionsFromUploadedData = async (
+  uploadedData: ConsumptionData[],
+  modelName: string,
+  predictionMonths: number = 72
+): Promise<ConsumptionData[]> => {
+  try {
+    console.log(`Generating predictions using ${modelName} model for uploaded data`);
+    
+    // Sort data chronologically
+    const sortedData = [...uploadedData].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    // Use the existing prediction function from mockData for now
+    // In a real implementation, this would use the actual TensorFlow model
+    const { generatePredictions } = await import('@/utils/mockData');
+    
+    const predictions = generatePredictions(
+      sortedData,
+      predictionMonths,
+      modelName
+    );
+    
+    console.log(`Generated ${predictions.length} predictions using ${modelName}`);
+    return [...sortedData, ...predictions];
+  } catch (error) {
+    console.error('Error generating predictions from uploaded data:', error);
+    toast.error(`Failed to generate predictions with ${modelName}`);
+    return uploadedData;
+  }
 };

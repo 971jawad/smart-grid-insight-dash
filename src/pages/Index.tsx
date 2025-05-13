@@ -56,6 +56,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false);
   const [isModelLoading, setIsModelLoading] = useState<boolean>(false);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   
   // Get model performance metrics
   const modelMetrics = selectedModel && selectedModel !== 'none' 
@@ -72,17 +73,28 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   // Load Excel data on component mount
   useEffect(() => {
     const loadExcelData = async () => {
-      // Fetch data from GitHub Excel file
-      const excelData = await processExcelData();
+      setIsDataLoading(true);
       
-      if (excelData.length > 0) {
-        setConsumptionData(excelData);
-        toast.success('Default data loaded successfully');
-      } else {
-        // Fallback to mock data if Excel fetch fails
+      try {
+        // Fetch data from GitHub Excel file
+        const excelData = await processExcelData();
+        
+        if (excelData.length > 0) {
+          setConsumptionData(excelData);
+          toast.success('Default data loaded successfully');
+        } else {
+          // Fallback to mock data if Excel fetch fails
+          const mockData = generateMockData();
+          setConsumptionData(mockData);
+          toast.error('Failed to load Excel data, using mock data instead');
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
         const mockData = generateMockData();
         setConsumptionData(mockData);
-        toast.error('Failed to load Excel data, using mock data instead');
+        toast.error('Failed to load data, using mock data instead');
+      } finally {
+        setIsDataLoading(false);
       }
     };
     
@@ -160,8 +172,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   
   // Handle data upload
   const handleDataUpload = (data: ConsumptionData[]) => {
-    setSelectedModel('none'); // Reset model selection
-    setConsumptionData(data); // Set historical data
+    setConsumptionData(data); // Set data including predictions if model is selected
     toast.success('Data uploaded successfully');
   };
   
@@ -219,9 +230,20 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="bg-card shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Smart Grid Electricity Consumption Dashboard</h1>
+      <header className="bg-card shadow-sm border-b border-border/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/lovable-uploads/465b9642-102f-4a7e-b6d9-cd6c3530a730.png" 
+              alt="Sonex Logo" 
+              className="h-10 w-10 object-contain sonex-logo" 
+            />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold">Sonex Energy Analytics</h1>
+              <span className="text-xs text-muted-foreground">Smart Grid Electricity Consumption Dashboard</span>
+            </div>
+          </div>
+          
           <div className="flex items-center space-x-4">
             {(user || loggedIn) ? (
               // User is logged in, show avatar dropdown
@@ -234,14 +256,14 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="flex items-center">
                     <User className="mr-2 h-4 w-4" />
                     <span>{userName}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={handleSignOut} className="flex items-center text-red-500">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                   </DropdownMenuItem>
@@ -282,7 +304,16 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
           
           {/* Main Chart */}
           <div className="mb-6">
-            <ConsumptionChart data={consumptionData} />
+            {isDataLoading ? (
+              <div className="bg-card rounded-lg shadow-md p-4 h-[460px] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <span>Loading consumption data...</span>
+                </div>
+              </div>
+            ) : (
+              <ConsumptionChart data={consumptionData} />
+            )}
           </div>
           
           {/* Metrics Cards - Only show when model is selected and not 'none' */}
@@ -318,11 +349,14 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
                 <SheetHeader>
                   <SheetTitle>Upload Data</SheetTitle>
                   <SheetDescription>
-                    Upload your CSV data files to analyze and visualize your energy consumption
+                    Upload your CSV or Excel data files to analyze and visualize your energy consumption
                   </SheetDescription>
                 </SheetHeader>
                 <div className="py-6">
-                  <EnhancedFileUploader onDataUploaded={handleDataUpload} />
+                  <EnhancedFileUploader 
+                    onDataUploaded={handleDataUpload}
+                    selectedModel={selectedModel}
+                  />
                 </div>
               </SheetContent>
             </Sheet>
@@ -355,9 +389,19 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       
       <footer className="bg-card border-t border-border mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-sm text-muted-foreground text-center">
-            Smart Grid Electricity Consumption Dashboard © {new Date().getFullYear()}
-          </p>
+          <div className="flex flex-col items-center md:flex-row md:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/465b9642-102f-4a7e-b6d9-cd6c3530a730.png" 
+                alt="Sonex Logo" 
+                className="h-6 w-6 object-contain sonex-logo" 
+              />
+              <span className="text-sm font-medium">Sonex Energy Analytics</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} Smart Grid Electricity Consumption Dashboard
+            </p>
+          </div>
         </div>
       </footer>
     </div>
