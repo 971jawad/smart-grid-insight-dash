@@ -42,7 +42,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
   ];
   
   // Determine x-axis tick amount based on data size and view mode
-  const getTickAmount = () => {
+  const getOptimalTickAmount = () => {
     if (yearFilter) {
       // For single year view, show all 12 months
       return 12;
@@ -50,10 +50,11 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       // For multi-year view, calculate based on data points
       const dataSpan = filteredData.length;
       
-      if (dataSpan <= 24) return Math.max(6, Math.floor(dataSpan / 2));
-      if (dataSpan <= 60) return Math.floor(dataSpan / 6); // Show every 6 months for 5 years
-      if (dataSpan <= 120) return Math.floor(dataSpan / 12); // Show yearly for 10 years
-      return Math.floor(dataSpan / 24); // Show every 2 years for more than 10 years
+      // Reduce tick density for better readability
+      if (dataSpan <= 24) return 6; // Every 4 months for 2 years
+      if (dataSpan <= 60) return 10; // About every 6 months for 5 years
+      if (dataSpan <= 120) return 5; // Yearly for 10 years
+      return Math.max(5, Math.floor(dataSpan / 36)); // Every 3 years for more than 10 years
     }
   };
 
@@ -155,7 +156,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
               // For data between 2-6 years, show quarter markers and year
               const month = date.getMonth();
               if (month % 3 === 0) {
-                return `Q${Math.floor(month / 3) + 1} ${date.getFullYear()}`;
+                return `Q${Math.floor(month / 3) + 1} '${date.getFullYear().toString().slice(-2)}`;
               }
               return '';
             } else {
@@ -172,8 +173,16 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         },
         rotateAlways: false,
         hideOverlappingLabels: true,
+        // Reduce label density to avoid overcrowding
+        datetimeUTC: false,
+        datetimeFormatter: {
+          year: 'yyyy',
+          month: "MMM 'yy",
+          day: 'dd MMM',
+          hour: 'HH:mm'
+        }
       },
-      tickAmount: getTickAmount(),
+      tickAmount: getOptimalTickAmount(), // Reduced for less congestion
       axisBorder: {
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
@@ -181,7 +190,9 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       axisTicks: {
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
-      }
+      },
+      // Improved tick placement
+      tickPlacement: 'on'
     },
     yaxis: {
       title: {
@@ -201,7 +212,9 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       },
       min: function(min: number) { return Math.floor(min * 0.8); },
       max: function(max: number) { return Math.ceil(max * 1.2); },
-      forceNiceScale: true
+      forceNiceScale: true,
+      // Limit the number of ticks on y-axis
+      tickAmount: 6
     },
     tooltip: {
       shared: true,
