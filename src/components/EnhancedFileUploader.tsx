@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { ConsumptionData } from '@/utils/mockData';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/authProvider';
 import { Loader2, AlertCircle, FileCheck, Ban, ShieldCheck, FileWarning } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,10 @@ import { processCSV, interpolateMissingMonths } from '@/utils/fileProcessing';
 import { uploadToSupabase, scanFile } from '@/utils/supabaseStorage';
 import AuthDialog from '@/components/AuthDialog';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { generatePredictionsFromUploadedData } from '@/utils/dataProcessor';
+import { 
+  generatePredictionsFromUploadedData, 
+  detectAndNormalizeTimeGranularity 
+} from '@/utils/dataProcessor';
 
 interface EnhancedFileUploaderProps {
   onDataUploaded: (data: ConsumptionData[]) => void;
@@ -52,7 +54,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     }
     
     if (!isValidFileType(file)) {
-      toast.error('Please select a CSV or Excel file');
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a CSV or Excel file",
+        variant: "destructive"
+      });
       setError('Only CSV or Excel files are accepted');
       return;
     }
@@ -128,16 +134,47 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     
+    // Detect time granularity based on data
+    const timeDiffs: number[] = [];
+    for (let i = 1; i < Math.min(10, sortedData.length); i++) {
+      const curr = new Date(sortedData[i].date);
+      const prev = new Date(sortedData[i-1].date);
+      
+      // Time difference in days
+      const diffTime = Math.abs(curr.getTime() - prev.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      timeDiffs.push(diffDays);
+    }
+    
+    // Calculate median time difference
+    const sortedDiffs = [...timeDiffs].sort((a, b) => a - b);
+    const medianDiff = sortedDiffs[Math.floor(sortedDiffs.length / 2)] || 0;
+    
+    // Determine granularity
+    let granularity = "unknown";
+    if (medianDiff <= 7) {
+      granularity = "daily";
+    } else if (medianDiff <= 45) {
+      granularity = "monthly";
+    } else {
+      granularity = "yearly";
+    }
+    
+    report.push(`ℹ️ Detected ${granularity} data granularity`);
+    
+    // Now check for gaps based on the granularity
     let gapCount = 0;
+    let significantGapSize = medianDiff * 2; // A gap is significant if it's twice the median difference
+    
     for (let i = 1; i < sortedData.length; i++) {
       const prevDate = new Date(sortedData[i-1].date);
       const currDate = new Date(sortedData[i].date);
       
-      // Assuming monthly data, check for gaps larger than 2 months
-      const diffMonths = (currDate.getFullYear() - prevDate.getFullYear()) * 12 + 
-        (currDate.getMonth() - prevDate.getMonth());
+      const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      if (diffMonths > 2) {
+      if (diffDays > significantGapSize) {
         gapCount++;
       }
     }
@@ -159,7 +196,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     
     if (!isValidFileType(selectedFile)) {
       setError('Only CSV or Excel files are accepted');
-      toast.error('Only CSV or Excel files are accepted');
+      toast({
+        title: "Invalid File Type",
+        description: "Only CSV or Excel files are accepted",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -180,7 +221,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       if (!scanPassed) {
         setScanStatus('failed');
         setError('File failed security scan. It may contain malicious content.');
-        toast.error('File failed security scan');
+        toast({
+          title: "Security Scan Failed",
+          description: "File was rejected due to security concerns",
+          variant: "destructive"
+        });
         setIsUploading(false);
         return;
       }
@@ -196,7 +241,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
           
           if (parsedData.length === 0) {
             setError('No valid data found in the file');
-            toast.error('No valid data found in the file');
+            toast({
+              title: "Empty Data",
+              description: "No valid data found in the file",
+              variant: "destructive"
+            });
             setIsUploading(false);
             return;
           }
@@ -209,22 +258,37 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
           if (!isValid) {
             setValidationStatus('invalid');
             setError('Data validation failed. See the validation report for details.');
-            toast.error('Data validation failed. Some data may be incorrect.');
+            toast({
+              title: "Validation Failed",
+              description: "Data validation failed. Some data may be incorrect.",
+              variant: "destructive"
+            });
             setIsUploading(false);
             return;
           }
           
           setValidationStatus('valid');
           
+          // Handle different time granularities (daily, monthly, yearly)
+          parsedData = detectAndNormalizeTimeGranularity(parsedData);
+          
           // Interpolate missing months and sort chronologically
           parsedData = interpolateMissingMonths(parsedData);
           parsedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
-          toast.success(`Successfully processed data with ${parsedData.length} entries`);
+          toast({
+            title: "Data Processed Successfully",
+            description: `Successfully processed data with ${parsedData.length} entries`,
+            variant: "default"
+          });
           
           // Generate predictions if a model is selected
           if (selectedModel && selectedModel !== 'none') {
-            toast.info(`Generating predictions using ${selectedModel} model...`);
+            toast({
+              title: "Generating Predictions",
+              description: `Using ${selectedModel} model to generate predictions...`,
+              variant: "default"
+            });
             const dataWithPredictions = await generatePredictionsFromUploadedData(
               parsedData, 
               selectedModel
@@ -238,7 +302,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           setError(`Error processing file: ${errorMessage}`);
-          toast.error(`Error processing file: ${errorMessage}`);
+          toast({
+            title: "Processing Error",
+            description: `Error processing file: ${errorMessage}`,
+            variant: "destructive"
+          });
           setValidationStatus('invalid');
         } finally {
           setIsUploading(false);
@@ -247,7 +315,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       
       reader.onerror = () => {
         setError('Error reading file');
-        toast.error('Error reading file');
+        toast({
+          title: "File Read Error",
+          description: "Could not read the uploaded file",
+          variant: "destructive"
+        });
         setIsUploading(false);
         setScanStatus('pending');
       };
@@ -256,7 +328,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setError(`Error: ${errorMessage}`);
-      toast.error(`Error: ${errorMessage}`);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
       setIsUploading(false);
       setScanStatus('pending');
     }

@@ -22,6 +22,7 @@ interface MonthlyData {
   month: string;
   consumption: number;
   change: number;
+  isPrediction: boolean;
 }
 
 const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
@@ -42,9 +43,10 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
       "July", "August", "September", "October", "November", "December"
     ];
     
+    // Get all data for the year, including predictions
     const yearData = data.filter(item => {
       const itemDate = new Date(item.date);
-      return itemDate.getFullYear().toString() === year && !item.isPrediction;
+      return itemDate.getFullYear().toString() === year;
     });
     
     // Sort by month
@@ -64,8 +66,35 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
       monthlyData.push({
         month: monthNames[monthIndex],
         consumption: item.consumption,
-        change: changePercentage
+        change: changePercentage,
+        isPrediction: !!item.isPrediction
       });
+    }
+    
+    // If year has incomplete months, fill them with zeros
+    if (monthlyData.length < 12) {
+      const existingMonths = new Set(monthlyData.map(m => m.month));
+      
+      // Add missing months with 0 values
+      for (let i = 0; i < monthNames.length; i++) {
+        const monthName = monthNames[i];
+        if (!existingMonths.has(monthName)) {
+          // For missing months, estimate value or set to 0
+          const lastKnownValue = monthlyData.length > 0 
+            ? monthlyData[monthlyData.length - 1].consumption 
+            : 0;
+          
+          monthlyData.push({
+            month: monthName,
+            consumption: 0,
+            change: 0,
+            isPrediction: true // Mark as prediction since it's missing
+          });
+        }
+      }
+      
+      // Re-sort by month order
+      monthlyData.sort((a, b) => monthNames.indexOf(a.month) - monthNames.indexOf(b.month));
     }
     
     return monthlyData;
@@ -103,12 +132,15 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
             {years.map((year) => {
               const summary = yearlySummary[year];
               const isExpanded = expandedYear === year;
+              const hasPredictionData = data.some(item => 
+                new Date(item.date).getFullYear().toString() === year && item.isPrediction
+              );
               
               return (
                 <React.Fragment key={year}>
                   <tr className={`${isExpanded ? 'bg-accent/30' : 'bg-card'} hover:bg-accent/10 transition-colors`}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {year}
+                      {year} {hasPredictionData ? "(Predicted)" : ""}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {summary.totalConsumption.toLocaleString()} kWh
@@ -165,11 +197,12 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                                       <TableHead>Month</TableHead>
                                       <TableHead>Consumption (kWh)</TableHead>
                                       <TableHead>Change from Previous Month</TableHead>
+                                      <TableHead>Data Type</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {generateMonthlyData(year).map((month, i) => (
-                                      <TableRow key={i}>
+                                      <TableRow key={i} className={month.isPrediction ? "bg-accent/10" : ""}>
                                         <TableCell className="font-medium">{month.month}</TableCell>
                                         <TableCell>{month.consumption.toLocaleString()}</TableCell>
                                         <TableCell>
@@ -183,6 +216,13 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                                             }`}>
                                               {month.change.toFixed(2)}%
                                             </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell>
+                                          {month.isPrediction ? (
+                                            <span className="text-amber-500">Predicted</span>
+                                          ) : (
+                                            <span className="text-green-500">Historical</span>
                                           )}
                                         </TableCell>
                                       </TableRow>

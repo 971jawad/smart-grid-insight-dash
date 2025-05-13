@@ -81,7 +81,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
         
         if (excelData.length > 0) {
           setConsumptionData(excelData);
-          toast.success('Default data loaded successfully');
+          toast.success('Default historical data loaded successfully');
         } else {
           // Fallback to mock data if Excel fetch fails
           const mockData = generateMockData();
@@ -312,7 +312,10 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
                 </div>
               </div>
             ) : (
-              <ConsumptionChart data={consumptionData} />
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Default Data Visualization (Historical Data)</h3>
+                <ConsumptionChart data={consumptionData} />
+              </div>
             )}
           </div>
           
