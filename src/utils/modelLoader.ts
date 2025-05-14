@@ -2,11 +2,10 @@
 import * as tf from '@tensorflow/tfjs';
 
 // Define model paths in the GitHub repository
-// Updated paths to use the correct filenames that actually exist in the repository
 const MODEL_PATHS = {
   'GRU': {
     modelJson: 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/GRUmodel.json',
-    weightsPath: 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/GRU.weights.bin'
+    weightsPath: 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/GRU.group1-shard1of1.bin'
   },
   'Bidirectional LSTM': {
     modelJson: 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/model%20(1).json',
@@ -18,11 +17,8 @@ const MODEL_PATHS = {
   }
 };
 
-// Excel data URL for default visualization - updated to ensure it exists
-export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/energy_consumption_data.csv';
-
-// Fallback URL in case primary data source fails
-export const FALLBACK_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_consumption.csv';
+// Excel data URL for default visualization
+export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data_interpolated.xlsx';
 
 // Model performance metrics (pre-evaluated)
 export const MODEL_METRICS = {
@@ -64,34 +60,13 @@ export const loadModel = async (modelName: string): Promise<tf.LayersModel | nul
 
   try {
     console.log(`Loading ${modelName} model...`);
+    const model = await tf.loadLayersModel(MODEL_PATHS[modelName as keyof typeof MODEL_PATHS].modelJson);
+    console.log(`${modelName} model loaded successfully`);
     
-    // Attempt to load the model with retry mechanism
-    let attempt = 0;
-    const maxAttempts = 3;
-    let model: tf.LayersModel | null = null;
+    // Cache the model
+    modelCache[modelName] = model;
     
-    while (attempt < maxAttempts && !model) {
-      try {
-        model = await tf.loadLayersModel(MODEL_PATHS[modelName as keyof typeof MODEL_PATHS].modelJson);
-      } catch (err) {
-        console.warn(`Attempt ${attempt + 1} failed to load ${modelName} model. Retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a second before retry
-        attempt++;
-        
-        if (attempt >= maxAttempts) {
-          throw err;
-        }
-      }
-    }
-    
-    if (model) {
-      console.log(`${modelName} model loaded successfully`);
-      // Cache the model
-      modelCache[modelName] = model;
-      return model;
-    }
-    
-    return null;
+    return model;
   } catch (error) {
     console.error(`Error loading ${modelName} model:`, error);
     return null;
@@ -100,6 +75,7 @@ export const loadModel = async (modelName: string): Promise<tf.LayersModel | nul
 
 /**
  * Generate predictions using the specified model
+ * This function would need to be adapted based on your model's input/output format
  */
 export const generateModelPredictions = async (
   modelName: string, 
@@ -150,72 +126,22 @@ export const generateModelPredictions = async (
 };
 
 /**
- * Fetch and parse data from GitHub
- * Implements a robust fetching strategy with retries and fallbacks
+ * Fetch and parse Excel data from GitHub
  */
 export const fetchExcelData = async (): Promise<{date: string, consumption: number}[]> => {
   try {
-    console.log('Fetching data from GitHub...');
+    console.log('Fetching Excel data from GitHub...');
     
-    // Track attempts for primary and fallback sources
-    let fetchSuccess = false;
-    let data: any[] = [];
+    // Since we can't directly parse Excel in browser, we'll use a pre-processed JSON version
+    // In a real-world scenario, you might want to convert the Excel to JSON on the server
+    const response = await fetch('https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data.json');
     
-    // Try primary URL with multiple attempts
-    for (let attempt = 0; attempt < 3 && !fetchSuccess; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`Retry attempt ${attempt} for primary data source...`);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait between retries
-        }
-        
-        const response = await fetch(EXCEL_DATA_URL, { cache: 'no-store' });
-        
-        if (response.ok) {
-          const csvText = await response.text();
-          data = parseCSV(csvText);
-          fetchSuccess = true;
-          console.log('Successfully fetched data from primary source');
-        } else {
-          console.warn(`Primary data source failed with status: ${response.status}`);
-        }
-      } catch (err) {
-        console.warn('Error fetching from primary source:', err);
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data: ${response.status}`);
     }
     
-    // If primary source failed, try fallback
-    if (!fetchSuccess) {
-      console.log('Trying fallback data source...');
-      
-      for (let attempt = 0; attempt < 3 && !fetchSuccess; attempt++) {
-        try {
-          if (attempt > 0) {
-            console.log(`Retry attempt ${attempt} for fallback data source...`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait between retries
-          }
-          
-          const response = await fetch(FALLBACK_DATA_URL, { cache: 'no-store' });
-          
-          if (response.ok) {
-            const csvText = await response.text();
-            data = parseCSV(csvText);
-            fetchSuccess = true;
-            console.log('Successfully fetched data from fallback source');
-          } else {
-            console.warn(`Fallback data source failed with status: ${response.status}`);
-          }
-        } catch (err) {
-          console.warn('Error fetching from fallback source:', err);
-        }
-      }
-    }
-    
-    // If both sources failed, generate mock data
-    if (!fetchSuccess || data.length === 0) {
-      console.warn('All data sources failed, generating mock data');
-      return generateMockData();
-    }
+    const data = await response.json();
+    console.log('Excel data fetched successfully');
     
     // Format the data to match our ConsumptionData structure
     return data.map((item: any) => ({
@@ -224,80 +150,9 @@ export const fetchExcelData = async (): Promise<{date: string, consumption: numb
       isPrediction: false
     }));
   } catch (error) {
-    console.error('Error in fetchExcelData:', error);
-    // Return mock data in case of error
-    return generateMockData();
-  }
-};
-
-/**
- * Parse CSV data from string
- */
-const parseCSV = (csvText: string): any[] => {
-  try {
-    // Split by lines
-    const lines = csvText.split('\n').filter(line => line.trim().length > 0);
-    if (lines.length < 2) {
-      throw new Error('CSV data has insufficient lines');
-    }
-    
-    // Parse header
-    const headers = lines[0].split(',').map(header => header.trim());
-    
-    // Parse data rows
-    const result = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(value => value.trim());
-      if (values.length === headers.length) {
-        const row: Record<string, any> = {};
-        headers.forEach((header, index) => {
-          // Try to convert to number if possible
-          const value = values[index];
-          const numValue = Number(value);
-          row[header] = isNaN(numValue) ? value : numValue;
-        });
-        result.push(row);
-      }
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('Error parsing CSV:', error);
+    console.error('Error fetching Excel data:', error);
+    // Return empty array in case of error
     return [];
   }
 };
 
-/**
- * Generate mock data as fallback
- */
-const generateMockData = (): {date: string, consumption: number}[] => {
-  console.log('Generating mock historical data');
-  const data: {date: string, consumption: number}[] = [];
-  
-  // Generate mock data from 2020 to current month (not future)
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
-  
-  for (let year = 2020; year <= currentYear; year++) {
-    // For current year, only generate up to current month
-    const monthLimit = year === currentYear ? currentMonth : 12;
-    
-    for (let month = 1; month <= monthLimit; month++) {
-      // Basic seasonal pattern with random variations
-      const baseValue = 5000;
-      const yearlyTrend = (year - 2020) * 200; // Increasing trend year by year
-      const seasonalFactor = Math.sin((month - 1) / 12 * Math.PI * 2); // Seasonal variation
-      const randomFactor = Math.random() * 500 - 250; // Random noise
-      
-      const consumption = Math.round(baseValue + yearlyTrend + seasonalFactor * 1000 + randomFactor);
-      
-      data.push({
-        date: `${year}-${month.toString().padStart(2, '0')}-01`,
-        consumption: Math.max(100, consumption) // Ensure positive consumption
-      });
-    }
-  }
-  
-  return data;
-};

@@ -16,7 +16,7 @@ import SummaryTable from '@/components/SummaryTable';
 import { Printer, LogOut, User, Upload } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/lib/authProvider';
-import { loadModel, MODEL_METRICS, fetchExcelData } from '@/utils/modelLoader';
+import { loadModel, MODEL_METRICS } from '@/utils/modelLoader';
 import { processExcelData, prepareModelInput, denormalizeOutput, generateFutureDates } from '@/utils/dataProcessor';
 import { 
   DropdownMenu,
@@ -77,7 +77,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       
       try {
         // Fetch data from GitHub Excel file
-        const excelData = await fetchExcelData();
+        const excelData = await processExcelData();
         
         if (excelData.length > 0) {
           setConsumptionData(excelData);
@@ -101,31 +101,19 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
     loadExcelData();
   }, []);
   
-  // Generate mock data as fallback (only includes historical data, not future predictions)
+  // Generate mock data as fallback (simplified version)
   const generateMockData = (): ConsumptionData[] => {
     const data: ConsumptionData[] = [];
     
-    // Generate mock data from 2020 to current month (not future)
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
-    
-    for (let year = 2020; year <= currentYear; year++) {
-      // For current year, only generate up to current month
-      const monthLimit = year === currentYear ? currentMonth : 12;
-      
-      for (let month = 1; month <= monthLimit; month++) {
-        // Basic seasonal pattern with random variations
-        const baseValue = 5000;
-        const yearlyTrend = (year - 2020) * 200; // Increasing trend year by year
-        const seasonalFactor = Math.sin((month - 1) / 12 * Math.PI * 2); // Seasonal variation
-        const randomFactor = Math.random() * 500 - 250; // Random noise
-        
-        const consumption = Math.round(baseValue + yearlyTrend + seasonalFactor * 1000 + randomFactor);
+    // Generate simple mock data for fallback
+    for (let year = 2012; year <= 2025; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const consumption = 5000 + Math.sin((month / 12) * Math.PI * 2) * 1000 + 
+          (year - 2012) * 200 + Math.random() * 500;
         
         data.push({
           date: `${year}-${month.toString().padStart(2, '0')}-01`,
-          consumption: Math.max(100, consumption), // Ensure positive consumption
+          consumption: Math.round(consumption),
           isPrediction: false
         });
       }
@@ -325,6 +313,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
               </div>
             ) : (
               <div>
+                <h3 className="text-lg font-semibold mb-2">Default Data Visualization (Historical Data)</h3>
                 <ConsumptionChart data={consumptionData} />
               </div>
             )}
