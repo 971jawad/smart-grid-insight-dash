@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ConsumptionData } from '@/utils/mockData';
 import ReactApexChart from 'react-apexcharts';
@@ -77,7 +76,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
     }
   };
 
-  // Calculate min and max values for Y axis to prevent warnings
+  // Calculate min and max values for Y axis to prevent warnings and ensure proper scaling
   const getYAxisMinMax = () => {
     // Get all consumption values
     const allValues = filteredData.map(item => item.consumption);
@@ -91,10 +90,14 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       return { min: min * 0.8, max: max * 1.2 };
     }
     
-    // Add some padding
+    // Add padding but keep the scale reasonable
+    // Use a percentage of the range for padding
+    const range = max - min;
+    const padding = range * 0.1;
+    
     return {
-      min: Math.floor(min * 0.8),
-      max: Math.ceil(max * 1.2)
+      min: Math.max(0, Math.floor(min - padding)), // Ensure we don't go below zero for consumption
+      max: Math.ceil(max + padding)
     };
   };
   
@@ -215,7 +218,6 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         },
         rotateAlways: false,
         hideOverlappingLabels: true,
-        // Reduce label density to avoid overcrowding
         datetimeUTC: false,
         datetimeFormatter: {
           year: 'yyyy',
@@ -224,7 +226,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           hour: 'HH:mm'
         }
       },
-      tickAmount: getOptimalTickAmount(), // Reduced for less congestion
+      tickAmount: getOptimalTickAmount(),
       axisBorder: {
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
@@ -233,7 +235,6 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
       },
-      // Improved tick placement
       tickPlacement: 'on'
     },
     yaxis: {
@@ -252,11 +253,9 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           colors: 'var(--chart-text-color, #718096)'
         }
       },
-      // Use pre-calculated min and max values to prevent warnings
       min: yAxisRange.min,
       max: yAxisRange.max,
       forceNiceScale: true,
-      // Limit the number of ticks on y-axis
       tickAmount: 6
     },
     tooltip: {

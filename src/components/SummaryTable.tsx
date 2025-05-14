@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ConsumptionData, generateYearlySummary } from '@/utils/mockData';
+import { ConsumptionData } from '@/utils/mockData';
 import { ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import ConsumptionChart from './ConsumptionChart';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,117 @@ interface MonthlyData {
   isPrediction: boolean;
 }
 
+interface YearlySummary {
+  [year: string]: {
+    totalConsumption: number;
+    yearOverYearChange: number;
+    highestMonth: {
+      month: string;
+      consumption: number;
+    };
+    lowestMonth: {
+      month: string;
+      consumption: number;
+    };
+    monthlyData: {
+      [month: string]: {
+        consumption: number;
+        isPrediction: boolean;
+      };
+    };
+  };
+}
+
+// Helper to generate yearly summary with corrected calculations
+const generateYearlySummary = (data: ConsumptionData[]): YearlySummary => {
+  // Create a sorted copy of the data to ensure we're working chronologically
+  const sortedData = [...data].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  // Initialize results object
+  const result: YearlySummary = {};
+  
+  // Process all data points
+  sortedData.forEach((item) => {
+    const date = new Date(item.date);
+    const year = date.getFullYear().toString();
+    const monthIndex = date.getMonth();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const month = monthNames[monthIndex];
+    
+    // Initialize year object if it doesn't exist
+    if (!result[year]) {
+      result[year] = {
+        totalConsumption: 0,
+        yearOverYearChange: 0,
+        highestMonth: { month: "", consumption: 0 },
+        lowestMonth: { month: "", consumption: Number.MAX_VALUE },
+        monthlyData: {}
+      };
+    }
+    
+    // Update total consumption
+    result[year].totalConsumption += item.consumption;
+    
+    // Update monthly data
+    if (!result[year].monthlyData[month]) {
+      result[year].monthlyData[month] = {
+        consumption: item.consumption,
+        isPrediction: !!item.isPrediction
+      };
+    } else {
+      // If we already have this month (shouldn't happen with proper data)
+      // but just in case, we'll update it
+      result[year].monthlyData[month].consumption += item.consumption;
+      // If any data point is a prediction, mark the month as prediction
+      result[year].monthlyData[month].isPrediction = 
+        result[year].monthlyData[month].isPrediction || !!item.isPrediction;
+    }
+    
+    // Update highest/lowest month tracking
+    if (item.consumption > result[year].highestMonth.consumption) {
+      result[year].highestMonth = { month, consumption: item.consumption };
+    }
+    
+    if (item.consumption < result[year].lowestMonth.consumption) {
+      result[year].lowestMonth = { month, consumption: item.consumption };
+    }
+  });
+  
+  // Calculate year-over-year changes with proper percentage calculation
+  const years = Object.keys(result).sort();
+  for (let i = 1; i < years.length; i++) {
+    const currentYear = years[i];
+    const previousYear = years[i - 1];
+    
+    const currentConsumption = result[currentYear].totalConsumption;
+    const previousConsumption = result[previousYear].totalConsumption;
+    
+    // Avoid division by zero
+    if (previousConsumption > 0) {
+      // Calculate percentage change rounded to 2 decimal places
+      const percentageChange = ((currentConsumption - previousConsumption) / previousConsumption) * 100;
+      result[currentYear].yearOverYearChange = parseFloat(percentageChange.toFixed(2));
+    } else {
+      result[currentYear].yearOverYearChange = 0;
+    }
+  }
+  
+  // Handle edge case for lowest month if we didn't find any valid low value
+  for (const year in result) {
+    if (result[year].lowestMonth.consumption === Number.MAX_VALUE) {
+      result[year].lowestMonth.consumption = 0;
+      result[year].lowestMonth.month = "N/A";
+    }
+  }
+  
+  return result;
+};
+
 const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
   console.log(`SummaryTable: Received ${data.length} data points`);
   
@@ -35,6 +147,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
   years.sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
   console.log(`SummaryTable: Years available: ${years.join(', ')}`);
   
+  // Generate correct yearly summary
   const yearlySummary = generateYearlySummary(safeData);
   const [expandedYear, setExpandedYear] = useState<string | null>(null);
   
@@ -52,62 +165,49 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
       "July", "August", "September", "October", "November", "December"
     ];
     
-    // Get all data for the year, including predictions
-    const yearData = data.filter(item => {
-      const itemDate = new Date(item.date);
-      return itemDate.getFullYear().toString() === year;
-    });
-    
-    // Sort by month
-    yearData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    // Map month indices to actual data 
-    const monthMap = new Map<number, ConsumptionData>();
-    
-    // Add all available data to the map
-    for (const item of yearData) {
-      const monthIndex = new Date(item.date).getMonth();
-      monthMap.set(monthIndex, item);
-    }
-    
-    // Create monthly data with change percentage
+    // Create full monthly array with correct data
     const monthlyData: MonthlyData[] = [];
     
     for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-      const item = monthMap.get(monthIndex);
+      const month = monthNames[monthIndex];
       
-      if (item) {
-        const previousMonthIndex = monthIndex > 0 ? monthIndex - 1 : 11;
-        const previousYear = monthIndex > 0 ? parseInt(year) : parseInt(year) - 1;
-        
-        // Find previous month's data, check both in current year and previous year for January
-        const previousMonthData = data.find(d => {
-          const date = new Date(d.date);
-          return date.getMonth() === previousMonthIndex && 
-                 date.getFullYear() === previousYear;
-        });
-        
-        const previousMonthConsumption = previousMonthData ? previousMonthData.consumption : 0;
-        
-        const changePercentage = previousMonthConsumption > 0
-          ? ((item.consumption - previousMonthConsumption) / previousMonthConsumption) * 100
-          : 0;
-        
-        monthlyData.push({
-          month: monthNames[monthIndex],
-          consumption: item.consumption,
-          change: changePercentage,
-          isPrediction: !!item.isPrediction
-        });
+      // Get consumption for this month or default to 0
+      const monthData = yearlySummary[year]?.monthlyData?.[month] || {
+        consumption: 0, 
+        isPrediction: true
+      };
+      
+      // Calculate change from previous month
+      let previousMonthConsumption = 0;
+      
+      if (monthIndex > 0) {
+        // Get previous month in same year
+        const prevMonth = monthNames[monthIndex - 1];
+        previousMonthConsumption = yearlySummary[year]?.monthlyData?.[prevMonth]?.consumption || 0;
       } else {
-        // For missing months, add with zero values and mark as prediction
-        monthlyData.push({
-          month: monthNames[monthIndex],
-          consumption: 0,
-          change: 0,
-          isPrediction: true
-        });
+        // For January, get December of previous year if available
+        const prevYear = (parseInt(year) - 1).toString();
+        if (yearlySummary[prevYear]) {
+          previousMonthConsumption = yearlySummary[prevYear]?.monthlyData?.["December"]?.consumption || 0;
+        }
       }
+      
+      // Calculate percentage change
+      let changePercentage = 0;
+      if (previousMonthConsumption > 0) {
+        changePercentage = ((monthData.consumption - previousMonthConsumption) / previousMonthConsumption) * 100;
+      }
+      
+      // Limit to reasonable percentage changes (avoid extreme outliers)
+      if (changePercentage > 200) changePercentage = 200;
+      if (changePercentage < -200) changePercentage = -200;
+      
+      monthlyData.push({
+        month: month,
+        consumption: monthData.consumption,
+        change: parseFloat(changePercentage.toFixed(2)),
+        isPrediction: monthData.isPrediction
+      });
     }
     
     return monthlyData;
@@ -146,9 +246,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
               {sortedYears.map((year) => {
                 const summary = yearlySummary[year];
                 const isExpanded = expandedYear === year;
-                const hasPredictionData = data.some(item => 
-                  new Date(item.date).getFullYear().toString() === year && item.isPrediction
-                );
+                const hasPredictionData = Object.values(summary.monthlyData).some(item => item.isPrediction);
                 
                 return (
                   <React.Fragment key={year}>

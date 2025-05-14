@@ -38,7 +38,7 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
     // Validate data - only include entries with valid dates and consumption values
     const validatedData = processedData.filter(item => {
       const isValidDate = !isNaN(new Date(item.date).getTime());
-      const isValidConsumption = !isNaN(item.consumption);
+      const isValidConsumption = !isNaN(item.consumption) && item.consumption >= 0;
       // Only include data with valid date and consumption values
       return isValidDate && isValidConsumption;
     });
@@ -51,11 +51,7 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
     validatedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     // Make sure data doesn't exceed current date
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
-    
-    // Filter out future months beyond January 2025 (which is the latest historical data we should have)
+    // For this application, we'll set a specific cutoff at January 2025 as the latest historical data
     const cutoffDate = new Date(2025, 0, 1); // January 2025
     
     const filteredData = validatedData.filter(item => {
@@ -67,7 +63,7 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
     return filteredData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
-    toast(`Failed to load default data. Please try again later.`);
+    toast.error(`Failed to load default data. Please try again later.`);
     return [];
   }
 };
@@ -107,7 +103,6 @@ export const prepareModelInput = (
   const normalizedData = normalizeData(data.slice(-lookback));
   
   // Format depends on model architecture, this is a simplified example
-  // May need to adjust based on your specific model's expected input shape
   return [normalizedData.map(d => d.consumption)];
 };
 
@@ -149,7 +144,6 @@ export const denormalizeOutput = (
 
 /**
  * Detect data granularity (daily, monthly, yearly) and normalize to monthly format
- * @param data Uploaded consumption data
  */
 export const detectAndNormalizeTimeGranularity = (data: ConsumptionData[]): ConsumptionData[] => {
   if (data.length <= 1) return data;
@@ -318,7 +312,6 @@ export const generatePredictionsFromUploadedData = async (
     );
     
     // Use the existing prediction function from mockData for now
-    // In a real implementation, this would use the actual TensorFlow model
     const { generatePredictions } = await import('@/utils/mockData');
     
     const predictions = generatePredictions(
@@ -331,7 +324,7 @@ export const generatePredictionsFromUploadedData = async (
     return [...sortedData, ...predictions];
   } catch (error) {
     console.error('Error generating predictions from uploaded data:', error);
-    toast(`Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
+    toast.error(`Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
     return uploadedData;
   }
 };

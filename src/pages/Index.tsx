@@ -107,7 +107,6 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
     const data: ConsumptionData[] = [];
     
     // Generate mock data from 2020 to January 2025 (not future beyond that)
-    const currentDate = new Date();
     const endYear = 2025;
     const endMonth = 1; // January
     
@@ -116,21 +115,34 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       const monthLimit = year === endYear ? endMonth : 12;
       
       for (let month = 1; month <= monthLimit; month++) {
-        // Basic seasonal pattern with random variations
+        // More realistic seasonal pattern with natural growth
         const baseValue = 5000;
-        const yearlyTrend = (year - 2020) * 200; // Increasing trend year by year
-        const seasonalFactor = Math.sin((month - 1) / 12 * Math.PI * 2); // Seasonal variation
-        const randomFactor = Math.random() * 500 - 250; // Random noise
+        const yearlyTrend = (year - 2020) * 200; // Steady yearly growth
         
-        const consumption = Math.round(baseValue + yearlyTrend + seasonalFactor * 1000 + randomFactor);
+        // Seasonal pattern: higher in winter (Jan, Dec), lower in summer (Jun, Jul)
+        // Northern hemisphere pattern
+        const seasonalPosition = (month - 1) / 12;
+        const seasonalFactor = Math.cos(seasonalPosition * Math.PI * 2) * 0.2 + 1;
+        
+        // Small random variation (not too extreme)
+        const randomVariation = Math.random() * 300 - 150;
+        
+        // Final calculation with modifiers to ensure relatively smooth transitions
+        let consumption = Math.round((baseValue + yearlyTrend) * seasonalFactor + randomVariation);
+        
+        // Ensure reasonable values (no negatives, not too extreme)
+        consumption = Math.max(4000, Math.min(8000, consumption));
         
         data.push({
           date: `${year}-${month.toString().padStart(2, '0')}-01`,
-          consumption: Math.max(100, consumption), // Ensure positive consumption
+          consumption: consumption,
           isPrediction: false
         });
       }
     }
+    
+    // Sort data chronologically
+    data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     console.log(`Generated ${data.length} mock data points, ending at ${endYear}-${endMonth.toString().padStart(2, '0')}`);
     return data;
