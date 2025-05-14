@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -76,8 +75,8 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       setIsDataLoading(true);
       
       try {
-        // Fetch data from GitHub Excel file
-        const excelData = await fetchExcelData();
+        // Use processExcelData to fetch and process data
+        const excelData = await processExcelData();
         
         if (excelData && excelData.length > 0) {
           console.log(`Successfully loaded ${excelData.length} data points`);
@@ -107,14 +106,14 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   const generateMockData = (): ConsumptionData[] => {
     const data: ConsumptionData[] = [];
     
-    // Generate mock data from 2020 to current month (not future)
+    // Generate mock data from 2020 to January 2025 (not future beyond that)
     const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
+    const endYear = 2025;
+    const endMonth = 1; // January
     
-    for (let year = 2020; year <= currentYear; year++) {
-      // For current year, only generate up to current month
-      const monthLimit = year === currentYear ? currentMonth : 12;
+    for (let year = 2020; year <= endYear; year++) {
+      // For end year, only generate up to end month
+      const monthLimit = year === endYear ? endMonth : 12;
       
       for (let month = 1; month <= monthLimit; month++) {
         // Basic seasonal pattern with random variations
@@ -133,6 +132,7 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       }
     }
     
+    console.log(`Generated ${data.length} mock data points, ending at ${endYear}-${endMonth.toString().padStart(2, '0')}`);
     return data;
   };
   

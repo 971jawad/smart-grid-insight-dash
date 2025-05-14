@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ConsumptionData, generateYearlySummary } from '@/utils/mockData';
 import { ChevronDown, ChevronUp, Calendar } from 'lucide-react';
@@ -26,11 +25,21 @@ interface MonthlyData {
 }
 
 const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
-  const yearlySummary = generateYearlySummary(data);
+  console.log(`SummaryTable: Received ${data.length} data points`);
+  
+  // Make a defensive copy of the data to prevent any side effects
+  const safeData = [...data];
+  
+  // Log the range of years
+  const years = Array.from(new Set(safeData.map(item => new Date(item.date).getFullYear().toString())));
+  years.sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+  console.log(`SummaryTable: Years available: ${years.join(', ')}`);
+  
+  const yearlySummary = generateYearlySummary(safeData);
   const [expandedYear, setExpandedYear] = useState<string | null>(null);
   
   // Get array of years in sorted order
-  const years = Object.keys(yearlySummary).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+  const sortedYears = Object.keys(yearlySummary).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
   
   const toggleYear = (year: string) => {
     setExpandedYear(expandedYear === year ? null : year);
@@ -109,142 +118,148 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
       <h3 className="text-lg font-semibold mb-4">Yearly Consumption Summary</h3>
       
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-border">
-          <thead className="bg-muted/30">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Year
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Total Consumption (kWh)
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Year-over-Year Change
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Highest Month
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Lowest Month
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {years.map((year) => {
-              const summary = yearlySummary[year];
-              const isExpanded = expandedYear === year;
-              const hasPredictionData = data.some(item => 
-                new Date(item.date).getFullYear().toString() === year && item.isPrediction
-              );
-              
-              return (
-                <React.Fragment key={year}>
-                  <tr className={`${isExpanded ? 'bg-accent/30' : 'bg-card'} hover:bg-accent/10 transition-colors`}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {year} {hasPredictionData ? "(Predicted)" : ""}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {summary.totalConsumption.toLocaleString()} kWh
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {summary.yearOverYearChange === 0 
-                        ? '-' 
-                        : `${summary.yearOverYearChange.toFixed(2)}%`}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {summary.highestMonth.month} ({summary.highestMonth.consumption.toLocaleString()} kWh)
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {summary.lowestMonth.month} ({summary.lowestMonth.consumption.toLocaleString()} kWh)
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="flex items-center gap-1"
-                        onClick={() => toggleYear(year)}
-                      >
-                        {isExpanded ? (
-                          <>
-                            <span>Collapse</span> <ChevronUp size={16} />
-                          </>
-                        ) : (
-                          <>
-                            <span>Expand</span> <ChevronDown size={16} />
-                          </>
-                        )}
-                      </Button>
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={6} className="p-4 bg-accent/5">
-                        <div className="space-y-6">
-                          <div className="p-2">
-                            <ConsumptionChart data={data} yearFilter={year} />
-                          </div>
-                          
-                          <Card className="mx-auto max-w-5xl">
-                            <CardContent className="pt-6">
-                              <div className="flex items-center mb-4">
-                                <Calendar className="mr-2 h-5 w-5 text-primary" />
-                                <h4 className="text-md font-semibold">Monthly Details for {year}</h4>
-                              </div>
-                              
-                              <div className="overflow-x-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Month</TableHead>
-                                      <TableHead>Consumption (kWh)</TableHead>
-                                      <TableHead>Change from Previous Month</TableHead>
-                                      <TableHead>Data Type</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {generateMonthlyData(year).map((month, i) => (
-                                      <TableRow key={i} className={month.isPrediction ? "bg-accent/10" : ""}>
-                                        <TableCell className="font-medium">{month.month}</TableCell>
-                                        <TableCell>{month.consumption.toLocaleString()}</TableCell>
-                                        <TableCell>
-                                          {(i === 0 && parseInt(year) === parseInt(years[years.length-1])) ? '-' : (
-                                            <span className={`${
-                                              month.change > 0 
-                                                ? 'text-red-500' 
-                                                : month.change < 0 
-                                                  ? 'text-green-500' 
-                                                  : ''
-                                            }`}>
-                                              {month.change === 0 ? '-' : `${month.change.toFixed(2)}%`}
-                                            </span>
-                                          )}
-                                        </TableCell>
-                                        <TableCell>
-                                          {month.isPrediction ? (
-                                            <span className="text-amber-500">Predicted</span>
-                                          ) : (
-                                            <span className="text-green-500">Historical</span>
-                                          )}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
+        {sortedYears.length > 0 ? (
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/30">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Year
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Total Consumption (kWh)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Year-over-Year Change
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Highest Month
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Lowest Month
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {sortedYears.map((year) => {
+                const summary = yearlySummary[year];
+                const isExpanded = expandedYear === year;
+                const hasPredictionData = data.some(item => 
+                  new Date(item.date).getFullYear().toString() === year && item.isPrediction
+                );
+                
+                return (
+                  <React.Fragment key={year}>
+                    <tr className={`${isExpanded ? 'bg-accent/30' : 'bg-card'} hover:bg-accent/10 transition-colors`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {year} {hasPredictionData ? "(Predicted)" : ""}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {summary.totalConsumption.toLocaleString()} kWh
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {summary.yearOverYearChange === 0 
+                          ? '-' 
+                          : `${summary.yearOverYearChange.toFixed(2)}%`}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {summary.highestMonth.month} ({summary.highestMonth.consumption.toLocaleString()} kWh)
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {summary.lowestMonth.month} ({summary.lowestMonth.consumption.toLocaleString()} kWh)
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex items-center gap-1"
+                          onClick={() => toggleYear(year)}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <span>Collapse</span> <ChevronUp size={16} />
+                            </>
+                          ) : (
+                            <>
+                              <span>Expand</span> <ChevronDown size={16} />
+                            </>
+                          )}
+                        </Button>
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={6} className="p-4 bg-accent/5">
+                          <div className="space-y-6">
+                            <div className="p-2">
+                              <ConsumptionChart data={data} yearFilter={year} />
+                            </div>
+                            
+                            <Card className="mx-auto max-w-5xl">
+                              <CardContent className="pt-6">
+                                <div className="flex items-center mb-4">
+                                  <Calendar className="mr-2 h-5 w-5 text-primary" />
+                                  <h4 className="text-md font-semibold">Monthly Details for {year}</h4>
+                                </div>
+                                
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Month</TableHead>
+                                        <TableHead>Consumption (kWh)</TableHead>
+                                        <TableHead>Change from Previous Month</TableHead>
+                                        <TableHead>Data Type</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {generateMonthlyData(year).map((month, i) => (
+                                        <TableRow key={i} className={month.isPrediction ? "bg-accent/10" : ""}>
+                                          <TableCell className="font-medium">{month.month}</TableCell>
+                                          <TableCell>{month.consumption.toLocaleString()}</TableCell>
+                                          <TableCell>
+                                            {(i === 0 && parseInt(year) === parseInt(years[years.length-1])) ? '-' : (
+                                              <span className={`${
+                                                month.change > 0 
+                                                  ? 'text-red-500' 
+                                                  : month.change < 0 
+                                                    ? 'text-green-500' 
+                                                    : ''
+                                              }`}>
+                                                {month.change === 0 ? '-' : `${month.change.toFixed(2)}%`}
+                                              </span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>
+                                            {month.isPrediction ? (
+                                              <span className="text-amber-500">Predicted</span>
+                                            ) : (
+                                              <span className="text-green-500">Historical</span>
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-4 text-center text-muted-foreground">
+            No yearly data available
+          </div>
+        )}
       </div>
     </div>
   );

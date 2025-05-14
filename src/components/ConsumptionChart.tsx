@@ -9,14 +9,33 @@ interface ConsumptionChartProps {
 }
 
 const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter }) => {
+  // Log data to help debugging
+  console.log(`ConsumptionChart: Received ${data.length} data points`);
+  
   // Filter data by year if yearFilter is provided
   const filteredData = yearFilter 
     ? data.filter(item => new Date(item.date).getFullYear().toString() === yearFilter)
     : data;
   
+  console.log(`ConsumptionChart: After year filter, ${filteredData.length} data points remain`);
+  
+  // Sort data chronologically to ensure proper display
+  const sortedData = [...filteredData].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  
   // Separate historical data and predictions
-  const historicalData = filteredData.filter(item => !item.isPrediction);
-  const predictionData = filteredData.filter(item => !!item.isPrediction);
+  const historicalData = sortedData.filter(item => !item.isPrediction);
+  const predictionData = sortedData.filter(item => !!item.isPrediction);
+  
+  console.log(`ConsumptionChart: ${historicalData.length} historical points, ${predictionData.length} prediction points`);
+  
+  // Log earliest and latest dates for debugging
+  if (historicalData.length > 0) {
+    const earliestDate = new Date(historicalData[0].date);
+    const latestDate = new Date(historicalData[historicalData.length - 1].date);
+    console.log(`ConsumptionChart: Historical data from ${earliestDate.toISOString().slice(0, 10)} to ${latestDate.toISOString().slice(0, 10)}`);
+  }
   
   // Format the data for ApexCharts
   const historicalSeries = {

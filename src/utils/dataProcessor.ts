@@ -47,8 +47,24 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
       throw new Error('No valid data entries found after validation');
     }
     
-    console.log(`Successfully processed ${validatedData.length} Excel data records`);
-    return validatedData;
+    // Sort the data chronologically
+    validatedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Make sure data doesn't exceed current date
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    // Filter out future months beyond January 2025 (which is the latest historical data we should have)
+    const cutoffDate = new Date(2025, 0, 1); // January 2025
+    
+    const filteredData = validatedData.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate <= cutoffDate;
+    });
+    
+    console.log(`Successfully processed ${filteredData.length} Excel data records, ending at ${cutoffDate.toISOString().slice(0, 7)}`);
+    return filteredData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
     toast(`Failed to load default data. Please try again later.`);
