@@ -210,7 +210,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ data }) => {
                                         <TableCell className="font-medium">{month.month}</TableCell>
                                         <TableCell>{month.consumption.toLocaleString()}</TableCell>
                                         <TableCell>
-                                          {(i === 0 && parseInt(year) === years[years.length-1]) ? '-' : (
+                                          {(i === 0 && parseInt(year) === parseInt(years[years.length-1])) ? '-' : (
                                             <span className={`${
                                               month.change > 0 
                                                 ? 'text-red-500' 

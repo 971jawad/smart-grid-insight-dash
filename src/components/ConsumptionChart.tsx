@@ -58,6 +58,29 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
     }
   };
 
+  // Calculate min and max values for Y axis to prevent warnings
+  const getYAxisMinMax = () => {
+    // Get all consumption values
+    const allValues = filteredData.map(item => item.consumption);
+    if (allValues.length === 0) return { min: 0, max: 100 };
+    
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    
+    // Ensure min is less than max
+    if (min === max) {
+      return { min: min * 0.8, max: max * 1.2 };
+    }
+    
+    // Add some padding
+    return {
+      min: Math.floor(min * 0.8),
+      max: Math.ceil(max * 1.2)
+    };
+  };
+  
+  const yAxisRange = getYAxisMinMax();
+
   const options = {
     chart: {
       type: 'line' as const,
@@ -210,8 +233,9 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           colors: 'var(--chart-text-color, #718096)'
         }
       },
-      min: function(min: number) { return Math.floor(min * 0.8); },
-      max: function(max: number) { return Math.ceil(max * 1.2); },
+      // Use pre-calculated min and max values to prevent warnings
+      min: yAxisRange.min,
+      max: yAxisRange.max,
       forceNiceScale: true,
       // Limit the number of ticks on y-axis
       tickAmount: 6
