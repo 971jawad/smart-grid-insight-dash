@@ -79,11 +79,13 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
         // Fetch data from GitHub Excel file
         const excelData = await fetchExcelData();
         
-        if (excelData.length > 0) {
+        if (excelData && excelData.length > 0) {
+          console.log(`Successfully loaded ${excelData.length} data points`);
           setConsumptionData(excelData);
-          toast.success('Default historical data loaded successfully');
+          toast.success('Historical data loaded successfully');
         } else {
           // Fallback to mock data if Excel fetch fails
+          console.error('Failed to load data, excelData was empty or invalid');
           const mockData = generateMockData();
           setConsumptionData(mockData);
           toast.error('Failed to load Excel data, using mock data instead');

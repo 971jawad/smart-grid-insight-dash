@@ -153,7 +153,7 @@ export const generateModelPredictions = async (
  * Fetch and parse data from GitHub
  * Implements a robust fetching strategy with retries and fallbacks
  */
-export const fetchExcelData = async (): Promise<{date: string, consumption: number}[]> => {
+export const fetchExcelData = async (): Promise<{date: string, consumption: number, isPrediction?: boolean}[]> => {
   try {
     console.log('Fetching data from GitHub...');
     
@@ -270,9 +270,9 @@ const parseCSV = (csvText: string): any[] => {
 /**
  * Generate mock data as fallback
  */
-const generateMockData = (): {date: string, consumption: number}[] => {
+const generateMockData = (): {date: string, consumption: number, isPrediction?: boolean}[] => {
   console.log('Generating mock historical data');
-  const data: {date: string, consumption: number}[] = [];
+  const data: {date: string, consumption: number, isPrediction?: boolean}[] = [];
   
   // Generate mock data from 2020 to current month (not future)
   const currentDate = new Date();
@@ -294,7 +294,8 @@ const generateMockData = (): {date: string, consumption: number}[] => {
       
       data.push({
         date: `${year}-${month.toString().padStart(2, '0')}-01`,
-        consumption: Math.max(100, consumption) // Ensure positive consumption
+        consumption: Math.max(100, consumption), // Ensure positive consumption
+        isPrediction: false
       });
     }
   }

@@ -1,7 +1,7 @@
 
 import { ConsumptionData } from '@/utils/mockData';
 import { fetchExcelData } from '@/utils/modelLoader';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 /**
  * Process data from Excel format to ConsumptionData format
@@ -51,11 +51,7 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
     return validatedData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
-    toast({
-      title: "Error",
-      description: "Failed to load default data. Please try again later.",
-      variant: "destructive"
-    });
+    toast(`Failed to load default data. Please try again later.`);
     return [];
   }
 };
@@ -207,14 +203,14 @@ const convertDailyToMonthly = (data: ConsumptionData[]): ConsumptionData[] => {
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     
     if (!monthlyData.has(monthKey)) {
-      monthlyData.set(monthKey, {total: 0, count: 0, isPrediction: item.isPrediction});
+      monthlyData.set(monthKey, {total: 0, count: 0, isPrediction: item.isPrediction || false});
     }
     
     const entry = monthlyData.get(monthKey)!;
     entry.total += item.consumption;
     entry.count += 1;
     // If any data point in the month is a prediction, mark the month as a prediction
-    entry.isPrediction = entry.isPrediction || item.isPrediction;
+    entry.isPrediction = entry.isPrediction || (item.isPrediction || false);
   });
   
   return Array.from(monthlyData).map(([month, data]) => ({
@@ -233,7 +229,7 @@ const convertYearlyToMonthly = (data: ConsumptionData[]): ConsumptionData[] => {
   for (let i = 0; i < data.length; i++) {
     const currentYear = new Date(data[i].date).getFullYear();
     const currentValue = data[i].consumption;
-    const isPrediction = data[i].isPrediction;
+    const isPrediction = data[i].isPrediction || false;
     
     // If we have next year's data, use it for interpolation
     let nextYearValue = currentValue;
@@ -319,11 +315,7 @@ export const generatePredictionsFromUploadedData = async (
     return [...sortedData, ...predictions];
   } catch (error) {
     console.error('Error generating predictions from uploaded data:', error);
-    toast({
-      title: "Prediction Error",
-      description: `Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`,
-      variant: "destructive"
-    });
+    toast(`Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
     return uploadedData;
   }
 };
