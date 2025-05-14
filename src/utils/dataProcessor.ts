@@ -1,7 +1,6 @@
-
 import { ConsumptionData } from '@/utils/mockData';
 import { fetchExcelData } from '@/utils/modelLoader';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * Process data from Excel format to ConsumptionData format
@@ -38,7 +37,7 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
     // Validate data - only include entries with valid dates and consumption values
     const validatedData = processedData.filter(item => {
       const isValidDate = !isNaN(new Date(item.date).getTime());
-      const isValidConsumption = !isNaN(item.consumption) && item.consumption >= 0;
+      const isValidConsumption = !isNaN(item.consumption);
       // Only include data with valid date and consumption values
       return isValidDate && isValidConsumption;
     });
@@ -47,23 +46,15 @@ export const processExcelData = async (): Promise<ConsumptionData[]> => {
       throw new Error('No valid data entries found after validation');
     }
     
-    // Sort the data chronologically
-    validatedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    // Make sure data doesn't exceed current date
-    // For this application, we'll set a specific cutoff at January 2025 as the latest historical data
-    const cutoffDate = new Date(2025, 0, 1); // January 2025
-    
-    const filteredData = validatedData.filter(item => {
-      const itemDate = new Date(item.date);
-      return itemDate <= cutoffDate;
-    });
-    
-    console.log(`Successfully processed ${filteredData.length} Excel data records, ending at ${cutoffDate.toISOString().slice(0, 7)}`);
-    return filteredData;
+    console.log(`Successfully processed ${validatedData.length} Excel data records`);
+    return validatedData;
   } catch (error) {
     console.error('Error processing Excel data:', error);
-    toast.error(`Failed to load default data. Please try again later.`);
+    toast({
+      title: "Error",
+      description: "Failed to load default data. Please try again later.",
+      variant: "destructive"
+    });
     return [];
   }
 };
@@ -103,6 +94,7 @@ export const prepareModelInput = (
   const normalizedData = normalizeData(data.slice(-lookback));
   
   // Format depends on model architecture, this is a simplified example
+  // May need to adjust based on your specific model's expected input shape
   return [normalizedData.map(d => d.consumption)];
 };
 
@@ -144,6 +136,7 @@ export const denormalizeOutput = (
 
 /**
  * Detect data granularity (daily, monthly, yearly) and normalize to monthly format
+ * @param data Uploaded consumption data
  */
 export const detectAndNormalizeTimeGranularity = (data: ConsumptionData[]): ConsumptionData[] => {
   if (data.length <= 1) return data;
@@ -213,14 +206,14 @@ const convertDailyToMonthly = (data: ConsumptionData[]): ConsumptionData[] => {
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     
     if (!monthlyData.has(monthKey)) {
-      monthlyData.set(monthKey, {total: 0, count: 0, isPrediction: item.isPrediction || false});
+      monthlyData.set(monthKey, {total: 0, count: 0, isPrediction: item.isPrediction});
     }
     
     const entry = monthlyData.get(monthKey)!;
     entry.total += item.consumption;
     entry.count += 1;
     // If any data point in the month is a prediction, mark the month as a prediction
-    entry.isPrediction = entry.isPrediction || (item.isPrediction || false);
+    entry.isPrediction = entry.isPrediction || item.isPrediction;
   });
   
   return Array.from(monthlyData).map(([month, data]) => ({
@@ -239,7 +232,7 @@ const convertYearlyToMonthly = (data: ConsumptionData[]): ConsumptionData[] => {
   for (let i = 0; i < data.length; i++) {
     const currentYear = new Date(data[i].date).getFullYear();
     const currentValue = data[i].consumption;
-    const isPrediction = data[i].isPrediction || false;
+    const isPrediction = data[i].isPrediction;
     
     // If we have next year's data, use it for interpolation
     let nextYearValue = currentValue;
@@ -312,6 +305,7 @@ export const generatePredictionsFromUploadedData = async (
     );
     
     // Use the existing prediction function from mockData for now
+    // In a real implementation, this would use the actual TensorFlow model
     const { generatePredictions } = await import('@/utils/mockData');
     
     const predictions = generatePredictions(
@@ -324,7 +318,11 @@ export const generatePredictionsFromUploadedData = async (
     return [...sortedData, ...predictions];
   } catch (error) {
     console.error('Error generating predictions from uploaded data:', error);
-    toast.error(`Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
+    toast({
+      title: "Prediction Error",
+      description: `Failed to generate predictions with ${modelName}: ${error instanceof Error ? error.message : String(error)}`,
+      variant: "destructive"
+    });
     return uploadedData;
   }
 };

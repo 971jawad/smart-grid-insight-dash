@@ -18,8 +18,8 @@ const MODEL_PATHS = {
   }
 };
 
-// Updated Excel data URL to use the specific file requested
-export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_data_interpolated.xlsx';
+// Excel data URL for default visualization - updated to ensure it exists
+export const EXCEL_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/energy_consumption_data.csv';
 
 // Fallback URL in case primary data source fails
 export const FALLBACK_DATA_URL = 'https://raw.githubusercontent.com/971jawad/MODELS-AND-WEIGHTS/main/monthly_consumption.csv';
@@ -153,7 +153,7 @@ export const generateModelPredictions = async (
  * Fetch and parse data from GitHub
  * Implements a robust fetching strategy with retries and fallbacks
  */
-export const fetchExcelData = async (): Promise<{date: string, consumption: number, isPrediction?: boolean}[]> => {
+export const fetchExcelData = async (): Promise<{date: string, consumption: number}[]> => {
   try {
     console.log('Fetching data from GitHub...');
     
@@ -172,20 +172,10 @@ export const fetchExcelData = async (): Promise<{date: string, consumption: numb
         const response = await fetch(EXCEL_DATA_URL, { cache: 'no-store' });
         
         if (response.ok) {
-          // Since it's an Excel file and we can't parse it directly in browser,
-          // we'll use a fallback CSV file that contains similar data
-          // In a real-world scenario, you'd use a server-side function to parse Excel
-          console.log('Fetching fallback CSV instead of Excel...');
-          const fallbackResponse = await fetch(FALLBACK_DATA_URL, { cache: 'no-store' });
-          
-          if (fallbackResponse.ok) {
-            const csvText = await fallbackResponse.text();
-            data = parseCSV(csvText);
-            fetchSuccess = true;
-            console.log('Successfully fetched data from fallback CSV source');
-          } else {
-            console.warn(`Fallback CSV source failed with status: ${fallbackResponse.status}`);
-          }
+          const csvText = await response.text();
+          data = parseCSV(csvText);
+          fetchSuccess = true;
+          console.log('Successfully fetched data from primary source');
         } else {
           console.warn(`Primary data source failed with status: ${response.status}`);
         }
@@ -194,9 +184,9 @@ export const fetchExcelData = async (): Promise<{date: string, consumption: numb
       }
     }
     
-    // If primary source failed, try direct fallback again
+    // If primary source failed, try fallback
     if (!fetchSuccess) {
-      console.log('Trying direct fallback data source...');
+      console.log('Trying fallback data source...');
       
       for (let attempt = 0; attempt < 3 && !fetchSuccess; attempt++) {
         try {
@@ -228,14 +218,11 @@ export const fetchExcelData = async (): Promise<{date: string, consumption: numb
     }
     
     // Format the data to match our ConsumptionData structure
-    const formattedData = data.map((item: any) => ({
+    return data.map((item: any) => ({
       date: item.date || `${item.year}-${String(item.month).padStart(2, '0')}-01`,
       consumption: Number(item.consumption) || Number(item.value),
       isPrediction: false
     }));
-    
-    console.log(`Successfully processed ${formattedData.length} data points`);
-    return formattedData;
   } catch (error) {
     console.error('Error in fetchExcelData:', error);
     // Return mock data in case of error
@@ -283,9 +270,9 @@ const parseCSV = (csvText: string): any[] => {
 /**
  * Generate mock data as fallback
  */
-const generateMockData = (): {date: string, consumption: number, isPrediction?: boolean}[] => {
+const generateMockData = (): {date: string, consumption: number}[] => {
   console.log('Generating mock historical data');
-  const data: {date: string, consumption: number, isPrediction?: boolean}[] = [];
+  const data: {date: string, consumption: number}[] = [];
   
   // Generate mock data from 2020 to current month (not future)
   const currentDate = new Date();
@@ -307,8 +294,7 @@ const generateMockData = (): {date: string, consumption: number, isPrediction?: 
       
       data.push({
         date: `${year}-${month.toString().padStart(2, '0')}-01`,
-        consumption: Math.max(100, consumption), // Ensure positive consumption
-        isPrediction: false
+        consumption: Math.max(100, consumption) // Ensure positive consumption
       });
     }
   }

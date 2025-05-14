@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ConsumptionData } from '@/utils/mockData';
 import ReactApexChart from 'react-apexcharts';
@@ -8,33 +9,14 @@ interface ConsumptionChartProps {
 }
 
 const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter }) => {
-  // Log data to help debugging
-  console.log(`ConsumptionChart: Received ${data.length} data points`);
-  
   // Filter data by year if yearFilter is provided
   const filteredData = yearFilter 
     ? data.filter(item => new Date(item.date).getFullYear().toString() === yearFilter)
     : data;
   
-  console.log(`ConsumptionChart: After year filter, ${filteredData.length} data points remain`);
-  
-  // Sort data chronologically to ensure proper display
-  const sortedData = [...filteredData].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-  
   // Separate historical data and predictions
-  const historicalData = sortedData.filter(item => !item.isPrediction);
-  const predictionData = sortedData.filter(item => !!item.isPrediction);
-  
-  console.log(`ConsumptionChart: ${historicalData.length} historical points, ${predictionData.length} prediction points`);
-  
-  // Log earliest and latest dates for debugging
-  if (historicalData.length > 0) {
-    const earliestDate = new Date(historicalData[0].date);
-    const latestDate = new Date(historicalData[historicalData.length - 1].date);
-    console.log(`ConsumptionChart: Historical data from ${earliestDate.toISOString().slice(0, 10)} to ${latestDate.toISOString().slice(0, 10)}`);
-  }
+  const historicalData = filteredData.filter(item => !item.isPrediction);
+  const predictionData = filteredData.filter(item => item.isPrediction);
   
   // Format the data for ApexCharts
   const historicalSeries = {
@@ -75,33 +57,6 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
       return Math.max(5, Math.floor(dataSpan / 36)); // Every 3 years for more than 10 years
     }
   };
-
-  // Calculate min and max values for Y axis to prevent warnings and ensure proper scaling
-  const getYAxisMinMax = () => {
-    // Get all consumption values
-    const allValues = filteredData.map(item => item.consumption);
-    if (allValues.length === 0) return { min: 0, max: 100 };
-    
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    
-    // Ensure min is less than max
-    if (min === max) {
-      return { min: min * 0.8, max: max * 1.2 };
-    }
-    
-    // Add padding but keep the scale reasonable
-    // Use a percentage of the range for padding
-    const range = max - min;
-    const padding = range * 0.1;
-    
-    return {
-      min: Math.max(0, Math.floor(min - padding)), // Ensure we don't go below zero for consumption
-      max: Math.ceil(max + padding)
-    };
-  };
-  
-  const yAxisRange = getYAxisMinMax();
 
   const options = {
     chart: {
@@ -218,6 +173,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         },
         rotateAlways: false,
         hideOverlappingLabels: true,
+        // Reduce label density to avoid overcrowding
         datetimeUTC: false,
         datetimeFormatter: {
           year: 'yyyy',
@@ -226,7 +182,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           hour: 'HH:mm'
         }
       },
-      tickAmount: getOptimalTickAmount(),
+      tickAmount: getOptimalTickAmount(), // Reduced for less congestion
       axisBorder: {
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
@@ -235,6 +191,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
         show: true,
         color: 'rgba(107, 114, 128, 0.3)'
       },
+      // Improved tick placement
       tickPlacement: 'on'
     },
     yaxis: {
@@ -253,9 +210,10 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
           colors: 'var(--chart-text-color, #718096)'
         }
       },
-      min: yAxisRange.min,
-      max: yAxisRange.max,
+      min: function(min: number) { return Math.floor(min * 0.8); },
+      max: function(max: number) { return Math.ceil(max * 1.2); },
       forceNiceScale: true,
+      // Limit the number of ticks on y-axis
       tickAmount: 6
     },
     tooltip: {

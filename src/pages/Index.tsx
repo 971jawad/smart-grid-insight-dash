@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -75,16 +76,14 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
       setIsDataLoading(true);
       
       try {
-        // Use processExcelData to fetch and process data
-        const excelData = await processExcelData();
+        // Fetch data from GitHub Excel file
+        const excelData = await fetchExcelData();
         
-        if (excelData && excelData.length > 0) {
-          console.log(`Successfully loaded ${excelData.length} data points`);
+        if (excelData.length > 0) {
           setConsumptionData(excelData);
-          toast.success('Historical data loaded successfully');
+          toast.success('Default historical data loaded successfully');
         } else {
           // Fallback to mock data if Excel fetch fails
-          console.error('Failed to load data, excelData was empty or invalid');
           const mockData = generateMockData();
           setConsumptionData(mockData);
           toast.error('Failed to load Excel data, using mock data instead');
@@ -106,45 +105,32 @@ const Index: React.FC<IndexProps> = ({ loggedIn = false }) => {
   const generateMockData = (): ConsumptionData[] => {
     const data: ConsumptionData[] = [];
     
-    // Generate mock data from 2020 to January 2025 (not future beyond that)
-    const endYear = 2025;
-    const endMonth = 1; // January
+    // Generate mock data from 2020 to current month (not future)
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
     
-    for (let year = 2020; year <= endYear; year++) {
-      // For end year, only generate up to end month
-      const monthLimit = year === endYear ? endMonth : 12;
+    for (let year = 2020; year <= currentYear; year++) {
+      // For current year, only generate up to current month
+      const monthLimit = year === currentYear ? currentMonth : 12;
       
       for (let month = 1; month <= monthLimit; month++) {
-        // More realistic seasonal pattern with natural growth
+        // Basic seasonal pattern with random variations
         const baseValue = 5000;
-        const yearlyTrend = (year - 2020) * 200; // Steady yearly growth
+        const yearlyTrend = (year - 2020) * 200; // Increasing trend year by year
+        const seasonalFactor = Math.sin((month - 1) / 12 * Math.PI * 2); // Seasonal variation
+        const randomFactor = Math.random() * 500 - 250; // Random noise
         
-        // Seasonal pattern: higher in winter (Jan, Dec), lower in summer (Jun, Jul)
-        // Northern hemisphere pattern
-        const seasonalPosition = (month - 1) / 12;
-        const seasonalFactor = Math.cos(seasonalPosition * Math.PI * 2) * 0.2 + 1;
-        
-        // Small random variation (not too extreme)
-        const randomVariation = Math.random() * 300 - 150;
-        
-        // Final calculation with modifiers to ensure relatively smooth transitions
-        let consumption = Math.round((baseValue + yearlyTrend) * seasonalFactor + randomVariation);
-        
-        // Ensure reasonable values (no negatives, not too extreme)
-        consumption = Math.max(4000, Math.min(8000, consumption));
+        const consumption = Math.round(baseValue + yearlyTrend + seasonalFactor * 1000 + randomFactor);
         
         data.push({
           date: `${year}-${month.toString().padStart(2, '0')}-01`,
-          consumption: consumption,
+          consumption: Math.max(100, consumption), // Ensure positive consumption
           isPrediction: false
         });
       }
     }
     
-    // Sort data chronologically
-    data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    console.log(`Generated ${data.length} mock data points, ending at ${endYear}-${endMonth.toString().padStart(2, '0')}`);
     return data;
   };
   
