@@ -16,7 +16,7 @@ const ConsumptionChart: React.FC<ConsumptionChartProps> = ({ data, yearFilter })
   
   // Separate historical data and predictions
   const historicalData = filteredData.filter(item => !item.isPrediction);
-  const predictionData = filteredData.filter(item => item.isPrediction);
+  const predictionData = filteredData.filter(item => !!item.isPrediction);
   
   // Format the data for ApexCharts
   const historicalSeries = {

@@ -1,6 +1,6 @@
+
 import React, { useState } from 'react';
 import { ConsumptionData } from '@/utils/mockData';
-import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/authProvider';
 import { Loader2, AlertCircle, FileCheck, Ban, ShieldCheck, FileWarning } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { processCSV, interpolateMissingMonths } from '@/utils/fileProcessing';
 import { uploadToSupabase, scanFile } from '@/utils/supabaseStorage';
 import AuthDialog from '@/components/AuthDialog';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { 
   generatePredictionsFromUploadedData, 
   detectAndNormalizeTimeGranularity 
@@ -54,11 +55,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     }
     
     if (!isValidFileType(file)) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please select a CSV or Excel file",
-        variant: "destructive"
-      });
+      toast("Invalid File Type - Please select a CSV or Excel file");
       setError('Only CSV or Excel files are accepted');
       return;
     }
@@ -196,11 +193,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     
     if (!isValidFileType(selectedFile)) {
       setError('Only CSV or Excel files are accepted');
-      toast({
-        title: "Invalid File Type",
-        description: "Only CSV or Excel files are accepted",
-        variant: "destructive"
-      });
+      toast("Invalid File Type - Only CSV or Excel files are accepted");
       return;
     }
     
@@ -221,11 +214,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       if (!scanPassed) {
         setScanStatus('failed');
         setError('File failed security scan. It may contain malicious content.');
-        toast({
-          title: "Security Scan Failed",
-          description: "File was rejected due to security concerns",
-          variant: "destructive"
-        });
+        toast("Security Scan Failed - File was rejected due to security concerns");
         setIsUploading(false);
         return;
       }
@@ -241,11 +230,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
           
           if (parsedData.length === 0) {
             setError('No valid data found in the file');
-            toast({
-              title: "Empty Data",
-              description: "No valid data found in the file",
-              variant: "destructive"
-            });
+            toast("Empty Data - No valid data found in the file");
             setIsUploading(false);
             return;
           }
@@ -258,11 +243,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
           if (!isValid) {
             setValidationStatus('invalid');
             setError('Data validation failed. See the validation report for details.');
-            toast({
-              title: "Validation Failed",
-              description: "Data validation failed. Some data may be incorrect.",
-              variant: "destructive"
-            });
+            toast("Validation Failed - Data validation failed. Some data may be incorrect.");
             setIsUploading(false);
             return;
           }
@@ -276,19 +257,11 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
           parsedData = interpolateMissingMonths(parsedData);
           parsedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
-          toast({
-            title: "Data Processed Successfully",
-            description: `Successfully processed data with ${parsedData.length} entries`,
-            variant: "default"
-          });
+          toast("Data Processed Successfully - Successfully processed data with " + parsedData.length + " entries");
           
           // Generate predictions if a model is selected
           if (selectedModel && selectedModel !== 'none') {
-            toast({
-              title: "Generating Predictions",
-              description: `Using ${selectedModel} model to generate predictions...`,
-              variant: "default"
-            });
+            toast("Generating Predictions - Using " + selectedModel + " model to generate predictions...");
             const dataWithPredictions = await generatePredictionsFromUploadedData(
               parsedData, 
               selectedModel
@@ -302,11 +275,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           setError(`Error processing file: ${errorMessage}`);
-          toast({
-            title: "Processing Error",
-            description: `Error processing file: ${errorMessage}`,
-            variant: "destructive"
-          });
+          toast("Processing Error - Error processing file: " + errorMessage);
           setValidationStatus('invalid');
         } finally {
           setIsUploading(false);
@@ -315,11 +284,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
       
       reader.onerror = () => {
         setError('Error reading file');
-        toast({
-          title: "File Read Error",
-          description: "Could not read the uploaded file",
-          variant: "destructive"
-        });
+        toast("File Read Error - Could not read the uploaded file");
         setIsUploading(false);
         setScanStatus('pending');
       };
@@ -328,11 +293,7 @@ const EnhancedFileUploader: React.FC<EnhancedFileUploaderProps> = ({ onDataUploa
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setError(`Error: ${errorMessage}`);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      toast("Error - " + errorMessage);
       setIsUploading(false);
       setScanStatus('pending');
     }
